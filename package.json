@@ -19,11 +19,14 @@
     "notification",
     "messaging",
     "twilio",
-    "business-api"
+    "meta",
+    "business-api",
+    "whatsapp-business-api"
   ],
   "author": "ht2cloud",
   "license": "MIT",
   "dependencies": {
+    "axios": "^1.6.0",
     "dotenv": "^16.3.1",
     "mime-types": "^2.1.35",
     "twilio": "^4.19.0",

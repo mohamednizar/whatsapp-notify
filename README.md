@@ -4,7 +4,8 @@ A comprehensive WhatsApp messaging integration service for sending templated mes
 
 ## Features
 
-- 📱 **WhatsApp Business API Integration** - Support for Twilio WhatsApp API with extensible provider architecture
+- 📱 **WhatsApp Business API Integration** - Support for Twilio WhatsApp API and Meta WhatsApp Business API
+- 🔌 **Multiple Providers** - Extensible provider architecture supporting Twilio and Meta APIs
 - 📝 **Templated Messages** - Built-in template engine with customizable message templates
 - 📎 **File Attachments** - Send receipts, e-books, and other documents (PDF, EPUB, images)
 - 🛠️ **Service Abstraction** - Clean API with methods like `sendMessage`, `sendReceipt`, `sendEbook`
@@ -30,12 +31,25 @@ Copy the example environment file and configure your credentials:
 cp .env.example .env
 ```
 
+#### Option A: Using Twilio WhatsApp API
+
 Edit `.env` with your Twilio credentials:
 
 ```env
+WHATSAPP_PROVIDER=twilio
 TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
 TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
 TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+#### Option B: Using Meta WhatsApp Business API
+
+Edit `.env` with your Meta credentials:
+
+```env
+WHATSAPP_PROVIDER=meta
+META_ACCESS_TOKEN=your_meta_access_token_here
+META_PHONE_NUMBER_ID=your_phone_number_id_here
 ```
 
 ### 2. Basic Usage
@@ -189,10 +203,52 @@ Maximum file size: 16MB (configurable)
 
 ## Provider Support
 
-Currently supported providers:
+The service supports multiple WhatsApp Business API providers:
 
-- **Twilio WhatsApp API** ✅
-- **Meta WhatsApp Business API** 🚧 (planned)
+### Twilio WhatsApp API ✅
+
+A reliable third-party provider with simple integration:
+
+```env
+WHATSAPP_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token  
+TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+```
+
+**Features:**
+- Easy setup and integration
+- Robust messaging capabilities
+- File attachment support via media URLs
+- Comprehensive error reporting
+
+### Meta WhatsApp Business API ✅
+
+Direct integration with Meta's official WhatsApp Business API:
+
+```env
+WHATSAPP_PROVIDER=meta
+META_ACCESS_TOKEN=your_meta_access_token
+META_PHONE_NUMBER_ID=your_phone_number_id
+```
+
+**Features:**
+- Direct connection to WhatsApp Business Platform
+- Lower costs for high-volume messaging
+- Advanced template support
+- Rich media and document sharing
+
+### Provider Selection
+
+Switch between providers by setting the `WHATSAPP_PROVIDER` environment variable:
+
+```env
+# Use Twilio (default)
+WHATSAPP_PROVIDER=twilio
+
+# Use Meta WhatsApp Business API
+WHATSAPP_PROVIDER=meta
+```
 
 The architecture is designed to be extensible for additional providers.
 
@@ -252,10 +308,15 @@ Check out the `examples/` directory for:
 
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `TWILIO_ACCOUNT_SID` | Twilio Account SID | Yes | - |
-| `TWILIO_AUTH_TOKEN` | Twilio Auth Token | Yes | - |
-| `TWILIO_WHATSAPP_FROM` | Twilio WhatsApp number | Yes | - |
-| `WHATSAPP_PROVIDER` | Provider to use | No | `twilio` |
+| `WHATSAPP_PROVIDER` | Provider to use (`twilio` or `meta`) | No | `twilio` |
+| **Twilio Configuration** | | | |
+| `TWILIO_ACCOUNT_SID` | Twilio Account SID | Yes (if using Twilio) | - |
+| `TWILIO_AUTH_TOKEN` | Twilio Auth Token | Yes (if using Twilio) | - |
+| `TWILIO_WHATSAPP_FROM` | Twilio WhatsApp number | Yes (if using Twilio) | - |
+| **Meta Configuration** | | | |
+| `META_ACCESS_TOKEN` | Meta Access Token | Yes (if using Meta) | - |
+| `META_PHONE_NUMBER_ID` | Meta Phone Number ID | Yes (if using Meta) | - |
+| **General Configuration** | | | |
 | `NODE_ENV` | Environment | No | `development` |
 | `LOG_LEVEL` | Logging level | No | `info` |
 | `PORT` | Server port | No | `3000` |

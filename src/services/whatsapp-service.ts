@@ -5,9 +5,11 @@ import {
   SendMessageResult, 
   MessageType,
   WhatsAppAttachment,
-  TwilioConfig 
+  TwilioConfig,
+  MetaConfig 
 } from '../types';
 import { TwilioWhatsAppProvider } from '../providers/twilio-provider';
+import { MetaWhatsAppProvider } from '../providers/meta-provider';
 import { TemplateEngine } from '../templates/template-engine';
 import { ConfigManager } from '../config';
 import { Logger, validatePhoneNumber } from '../utils';
@@ -40,7 +42,7 @@ export class WhatsAppNotificationService {
       case 'twilio':
         return new TwilioWhatsAppProvider(config.credentials as TwilioConfig);
       case 'meta':
-        throw new Error('Meta provider not yet implemented');
+        return new MetaWhatsAppProvider(config.credentials as MetaConfig);
       default:
         throw new Error(`Unsupported provider: ${config.provider}`);
     }
