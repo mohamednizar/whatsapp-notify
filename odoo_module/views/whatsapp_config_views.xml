@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WhatsApp Configuration Views -->
+        
+        <!-- Tree View -->
+        <record id="view_whatsapp_config_tree" model="ir.ui.view">
+            <field name="name">whatsapp.config.tree</field>
+            <field name="model">whatsapp.config</field>
+            <field name="arch" type="xml">
+                <tree string="WhatsApp Configurations">
+                    <field name="name"/>
+                    <field name="provider"/>
+                    <field name="active"/>
+                    <field name="is_default"/>
+                    <field name="test_mode"/>
+                </tree>
+            </field>
+        </record>
+        
+        <!-- Form View -->
+        <record id="view_whatsapp_config_form" model="ir.ui.view">
+            <field name="name">whatsapp.config.form</field>
+            <field name="model">whatsapp.config</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Configuration">
+                    <header>
+                        <button name="test_connection" type="object" string="Test Connection" class="btn-primary"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Configuration Name"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="provider" widget="radio"/>
+                                <field name="active"/>
+                                <field name="is_default"/>
+                                <field name="test_mode"/>
+                            </group>
+                        </group>
+                        
+                        <notebook>
+                            <page string="Twilio Configuration" attrs="{'invisible': [('provider', '!=', 'twilio')]}">
+                                <group>
+                                    <field name="twilio_account_sid" password="True"/>
+                                    <field name="twilio_auth_token" password="True"/>
+                                    <field name="twilio_whatsapp_from"/>
+                                </group>
+                                <div class="alert alert-info" role="alert">
+                                    <p><strong>Twilio WhatsApp Setup:</strong></p>
+                                    <ul>
+                                        <li>Get your Account SID and Auth Token from Twilio Console</li>
+                                        <li>Enable WhatsApp messaging in your Twilio project</li>
+                                        <li>Use the sandbox number or your approved WhatsApp Business number</li>
+                                    </ul>
+                                </div>
+                            </page>
+                            
+                            <page string="Meta Configuration" attrs="{'invisible': [('provider', '!=', 'meta')]}">
+                                <group>
+                                    <field name="meta_access_token" password="True"/>
+                                    <field name="meta_phone_number_id"/>
+                                </group>
+                                <div class="alert alert-info" role="alert">
+                                    <p><strong>Meta WhatsApp Business API Setup:</strong></p>
+                                    <ul>
+                                        <li>Create a Meta Developer account and WhatsApp Business App</li>
+                                        <li>Get your permanent access token</li>
+                                        <li>Find your Phone Number ID in the WhatsApp Business API setup</li>
+                                    </ul>
+                                </div>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        
+        <!-- Action -->
+        <record id="action_whatsapp_config" model="ir.actions.act_window">
+            <field name="name">WhatsApp Configurations</field>
+            <field name="res_model">whatsapp.config</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first WhatsApp configuration!
+                </p>
+                <p>
+                    Configure your WhatsApp provider (Twilio or Meta) to start sending messages.
+                </p>
+            </field>
+        </record>
+        
+    </data>
+</odoo>

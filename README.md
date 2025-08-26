@@ -2,24 +2,52 @@
 
 A comprehensive WhatsApp messaging integration service for sending templated messages and file attachments through the WhatsApp Business API.
 
+## 🚀 Project Structure
+
+This repository contains both the **Node.js/TypeScript library** and the **Odoo CE 17.0 module** for WhatsApp integration:
+
+- **`src/`** - Core TypeScript/Node.js library
+- **`odoo_module/`** - Complete Odoo CE 17.0 module
+- **`examples/`** - Usage examples and demos
+- **`templates/`** - Message templates
+- **`__tests__/`** - Test suite
+
 ## Features
 
-- 📱 **WhatsApp Business API Integration** - Support for Twilio WhatsApp API and Meta WhatsApp Business API
-- 🔌 **Multiple Providers** - Extensible provider architecture supporting Twilio and Meta APIs
-- 📝 **Templated Messages** - Built-in template engine with customizable message templates
-- 📎 **File Attachments** - Send receipts, e-books, and other documents (PDF, EPUB, images)
-- 🛠️ **Service Abstraction** - Clean API with methods like `sendMessage`, `sendReceipt`, `sendEbook`
-- ⚙️ **Configuration Management** - Environment-based configuration for provider credentials
-- 🧪 **CLI Interface** - Command-line tools for testing and integration
-- 🌐 **REST API Server** - HTTP endpoints for web service integration
-- ✅ **Error Handling** - Comprehensive error handling and validation
-- 🧪 **Full Test Coverage** - Complete test suite with Jest
+### 📱 **Core Library Features**
+- **WhatsApp Business API Integration** - Support for Twilio WhatsApp API and Meta WhatsApp Business API
+- **Multiple Providers** - Extensible provider architecture supporting Twilio and Meta APIs
+- **Templated Messages** - Built-in template engine with customizable message templates
+- **File Attachments** - Send receipts, e-books, and other documents (PDF, EPUB, images)
+- **Service Abstraction** - Clean API with methods like `sendMessage`, `sendReceipt`, `sendEbook`
+- **Configuration Management** - Environment-based configuration for provider credentials
+- **CLI Interface** - Command-line tools for testing and integration
+- **REST API Server** - HTTP endpoints for web service integration
+- **Error Handling** - Comprehensive error handling and validation
+- **Full Test Coverage** - Complete test suite with Jest
+
+### 🏢 **Odoo Module Features**
+- **Complete Odoo Integration** - Native Odoo CE 17.0 module
+- **Contact Integration** - Send WhatsApp messages directly from contact records
+- **Message Logging** - Complete message history and tracking within Odoo
+- **Template Management** - Create and manage templates through Odoo interface
+- **Wizard Interfaces** - User-friendly message composition wizards
+- **Security Groups** - Role-based access control (Manager/User)
+- **REST API Endpoints** - JSON API for external integrations
+- **Multi-Provider Support** - Same Twilio and Meta API support as the core library
 
 ## Installation
 
+### Node.js/TypeScript Library
 ```bash
 npm install @ht2cloud/whatsapp-notify
 ```
+
+### Odoo CE 17.0 Module
+1. Copy the `odoo_module` folder to your Odoo addons directory
+2. Rename it to `whatsapp_notify`  
+3. Install the module from Odoo Apps
+4. See [`odoo_module/README.md`](./odoo_module/README.md) for detailed setup instructions
 
 ## Quick Start
 
@@ -86,6 +114,33 @@ const ebookResult = await service.sendEbook(
   './book.pdf'
 );
 ```
+
+### 🏢 Odoo Integration
+
+For Odoo users, we provide a complete module for Odoo CE 17.0:
+
+```python
+# Send WhatsApp message from Odoo
+partner = self.env['res.partner'].browse(partner_id)
+message = self.env['whatsapp.message'].create_from_partner(
+    partner_id=partner.id,
+    message_type='template',
+    template_name='welcome',
+    template_vars={'name': partner.name}
+)
+message.action_send_message()
+```
+
+**Odoo Features:**
+- Native integration with Odoo contacts
+- Message history tracking  
+- Template management through Odoo interface
+- Wizard-based message composition
+- Role-based security (Manager/User groups)
+- Smart buttons on contact forms
+- REST API endpoints for external integration
+
+See [`odoo_module/README.md`](./odoo_module/README.md) for complete Odoo setup and usage instructions.
 
 ## API Reference
 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Main Menu -->
+        <menuitem id="menu_whatsapp_main"
+                  name="WhatsApp"
+                  sequence="100"/>
+        
+        <!-- Configuration Menu -->
+        <menuitem id="menu_whatsapp_config"
+                  name="Configuration"
+                  parent="menu_whatsapp_main"
+                  sequence="10"/>
+        
+        <menuitem id="menu_whatsapp_config_providers"
+                  name="Providers"
+                  parent="menu_whatsapp_config"
+                  action="action_whatsapp_config"
+                  sequence="10"/>
+        
+        <menuitem id="menu_whatsapp_config_templates"
+                  name="Templates"
+                  parent="menu_whatsapp_config"
+                  action="action_whatsapp_template"
+                  sequence="20"/>
+        
+        <!-- Messages Menu -->
+        <menuitem id="menu_whatsapp_messages"
+                  name="Messages"
+                  parent="menu_whatsapp_main"
+                  sequence="20"/>
+        
+        <menuitem id="menu_whatsapp_messages_all"
+                  name="All Messages"
+                  parent="menu_whatsapp_messages"
+                  action="action_whatsapp_message"
+                  sequence="10"/>
+        
+        <menuitem id="menu_whatsapp_messages_send"
+                  name="Send Message"
+                  parent="menu_whatsapp_messages"
+                  action="action_whatsapp_send_message_wizard"
+                  sequence="20"/>
+        
+        <menuitem id="menu_whatsapp_messages_send_template"
+                  name="Send Template"
+                  parent="menu_whatsapp_messages"
+                  action="action_whatsapp_send_template_wizard"
+                  sequence="30"/>
+        
+    </data>
+</odoo>
