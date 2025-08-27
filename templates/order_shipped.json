@@ -1,0 +1,5 @@
+{
+  "name": "order_shipped",
+  "content": "Hi {{customerName}}, great news! Your order #{{orderNumber}} has been shipped. Tracking number: {{trackingNumber}}. Expected delivery: {{expectedDelivery}}.",
+  "variables": ["customerName", "orderNumber", "trackingNumber", "expectedDelivery"]
+}

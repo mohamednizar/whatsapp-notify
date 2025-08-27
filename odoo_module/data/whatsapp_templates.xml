@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Default WhatsApp Templates -->
+        <record id="template_welcome" model="whatsapp.template">
+            <field name="name">welcome</field>
+            <field name="title">Welcome Message</field>
+            <field name="category">welcome</field>
+            <field name="description">Welcome message for new customers</field>
+            <field name="content">Hello {{name}}! Welcome to our service. We're excited to have you on board!</field>
+            <field name="variables">[{"name": "name", "type": "text", "description": "Customer name", "required": true}]</field>
+        </record>
+        
+        <record id="template_receipt" model="whatsapp.template">
+            <field name="name">receipt</field>
+            <field name="title">Receipt Delivery</field>
+            <field name="category">receipt</field>
+            <field name="description">Send receipt with PDF attachment</field>
+            <field name="content">Hi {{customer_name}}, your receipt for order {{order_id}} ({{amount}}) is attached. Thank you for your business!</field>
+            <field name="variables">[{"name": "customer_name", "type": "text", "description": "Customer name", "required": true}, {"name": "order_id", "type": "text", "description": "Order ID", "required": true}, {"name": "amount", "type": "currency", "description": "Order amount", "required": true}]</field>
+        </record>
+        
+        <record id="template_ebook" model="whatsapp.template">
+            <field name="name">ebook</field>
+            <field name="title">E-book Delivery</field>
+            <field name="category">ebook</field>
+            <field name="description">Send e-book with file attachment</field>
+            <field name="content">Here's your e-book "{{book_title}}" by {{author}}. Enjoy your reading!</field>
+            <field name="variables">[{"name": "book_title", "type": "text", "description": "Book title", "required": true}, {"name": "author", "type": "text", "description": "Book author", "required": true}]</field>
+        </record>
+        
+        <record id="template_order_confirmation" model="whatsapp.template">
+            <field name="name">order_confirmation</field>
+            <field name="title">Order Confirmation</field>
+            <field name="category">order</field>
+            <field name="description">Confirm order placement</field>
+            <field name="content">Hi {{customer_name}}, your order {{order_id}} for {{amount}} has been confirmed. Expected delivery: {{delivery_date}}.</field>
+            <field name="variables">[{"name": "customer_name", "type": "text", "description": "Customer name", "required": true}, {"name": "order_id", "type": "text", "description": "Order ID", "required": true}, {"name": "amount", "type": "currency", "description": "Order amount", "required": true}, {"name": "delivery_date", "type": "date", "description": "Expected delivery date", "required": true}]</field>
+        </record>
+        
+        <record id="template_notification" model="whatsapp.template">
+            <field name="name">notification</field>
+            <field name="title">General Notification</field>
+            <field name="category">notification</field>
+            <field name="description">General notification message</field>
+            <field name="content">Dear {{name}}, {{message}}</field>
+            <field name="variables">[{"name": "name", "type": "text", "description": "Customer name", "required": true}, {"name": "message", "type": "text", "description": "Notification message", "required": true}]</field>
+        </record>
+        
+    </data>
+</odoo>

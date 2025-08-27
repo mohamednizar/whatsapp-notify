@@ -1,0 +1,5 @@
+{
+  "name": "appointment_reminder",
+  "content": "Hi {{customerName}}, this is a reminder that you have an appointment on {{date}} at {{time}}. Location: {{location}}. Please reply to confirm.",
+  "variables": ["customerName", "date", "time", "location"]
+}

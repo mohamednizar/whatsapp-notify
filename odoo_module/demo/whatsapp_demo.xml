@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Demo WhatsApp Configuration -->
+        <record id="demo_whatsapp_config_twilio" model="whatsapp.config">
+            <field name="name">Demo Twilio Configuration</field>
+            <field name="provider">twilio</field>
+            <field name="is_default">1</field>
+            <field name="test_mode">1</field>
+            <field name="twilio_account_sid">demo_account_sid</field>
+            <field name="twilio_auth_token">demo_auth_token</field>
+            <field name="twilio_whatsapp_from">whatsapp:+14155238886</field>
+        </record>
+        
+        <!-- Demo Partners with Mobile Numbers -->
+        <record id="demo_partner_john" model="res.partner">
+            <field name="name">John Doe</field>
+            <field name="email">john.doe@example.com</field>
+            <field name="mobile">+1234567890</field>
+            <field name="is_company">0</field>
+        </record>
+        
+        <record id="demo_partner_jane" model="res.partner">
+            <field name="name">Jane Smith</field>
+            <field name="email">jane.smith@example.com</field>
+            <field name="mobile">+1987654321</field>
+            <field name="is_company">0</field>
+        </record>
+        
+        <!-- Demo WhatsApp Messages -->
+        <record id="demo_message_welcome" model="whatsapp.message">
+            <field name="subject">Welcome Message to John Doe</field>
+            <field name="partner_id" ref="demo_partner_john"/>
+            <field name="phone_number">+1234567890</field>
+            <field name="message_type">template</field>
+            <field name="template_name">welcome</field>
+            <field name="template_variables">{"name": "John Doe"}</field>
+            <field name="content">Hello John Doe! Welcome to our service. We're excited to have you on board!</field>
+            <field name="state">sent</field>
+            <field name="config_id" ref="demo_whatsapp_config_twilio"/>
+        </record>
+        
+        <record id="demo_message_notification" model="whatsapp.message">
+            <field name="subject">Notification to Jane Smith</field>
+            <field name="partner_id" ref="demo_partner_jane"/>
+            <field name="phone_number">+1987654321</field>
+            <field name="message_type">text</field>
+            <field name="content">Your order has been processed and will be delivered tomorrow.</field>
+            <field name="state">sent</field>
+            <field name="config_id" ref="demo_whatsapp_config_twilio"/>
+        </record>
+        
+    </data>
+</odoo>
