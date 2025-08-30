@@ -26,22 +26,22 @@
                             </group>
                         </group>
                         
-                        <group string="Template Variables" attrs="{'invisible': [('template_id', '=', False)]}">
+                        <group string="Template Variables" invisible="not template_id">
                             <field name="template_variables" widget="ace" options="{'mode': 'json'}" 
                                    placeholder='{"variable_name": "variable_value"}'/>
                         </group>
                         
-                        <group string="Preview" attrs="{'invisible': [('preview_content', '=', False)]}">
+                        <group string="Preview" invisible="not preview_content">
                             <field name="preview_content" widget="text" readonly="1"/>
                         </group>
                         
-                        <group string="Attachments (For receipts/ebooks)" attrs="{'invisible': [('template_id', '=', False)]}">
+                        <group string="Attachments (For receipts/ebooks)" invisible="not template_id">
                             <field name="attachment_ids" widget="many2many_binary" nolabel="1"/>
                         </group>
                     </sheet>
                     <footer>
                         <button name="action_preview_template" type="object" string="Preview" class="btn-secondary" 
-                                attrs="{'invisible': [('template_id', '=', False)]}"/>
+                                invisible="not template_id"/>
                         <button name="action_send_template" type="object" string="Send Template" class="btn-primary"/>
                         <button name="action_send_and_view_message" type="object" string="Send &amp; View" class="btn-secondary"/>
                         <button string="Cancel" class="btn-secondary" special="cancel"/>

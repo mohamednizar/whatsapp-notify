@@ -24,9 +24,9 @@
                 <!-- Add WhatsApp actions to the top buttons -->
                 <xpath expr="//header" position="inside">
                     <button name="action_send_whatsapp_message" type="object" string="Send WhatsApp" 
-                            class="btn-primary" attrs="{'invisible': [('mobile', '=', False)]}"/>
+                            class="btn-primary" invisible="not mobile"/>
                     <button name="action_send_whatsapp_template" type="object" string="Send Template" 
-                            class="btn-secondary" attrs="{'invisible': [('mobile', '=', False)]}"/>
+                            class="btn-secondary" invisible="not mobile"/>
                 </xpath>
                 
             </field>
@@ -40,7 +40,7 @@
             <field name="arch" type="xml">
                 
                 <xpath expr="//notebook" position="inside">
-                    <page string="WhatsApp Messages" attrs="{'invisible': [('whatsapp_message_count', '=', 0)]}">
+                    <page string="WhatsApp Messages" invisible="whatsapp_message_count == 0">
                         <field name="whatsapp_message_ids" readonly="1">
                             <tree>
                                 <field name="create_date"/>

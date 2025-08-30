@@ -29,9 +29,9 @@
                 <form string="WhatsApp Message">
                     <header>
                         <button name="action_send_message" type="object" string="Send Message" 
-                                attrs="{'invisible': [('state', '!=', 'draft')]}" class="btn-primary"/>
+                                invisible="state != 'draft'" class="btn-primary"/>
                         <button name="action_retry_send" type="object" string="Retry Send" 
-                                attrs="{'invisible': [('state', '!=', 'failed')]}" class="btn-warning"/>
+                                invisible="state != 'failed'" class="btn-warning"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,sending,sent,delivered,read"/>
                     </header>
                     <sheet>
@@ -60,7 +60,7 @@
                                 <field name="content" widget="text"/>
                             </page>
                             
-                            <page string="Template" attrs="{'invisible': [('message_type', 'not in', ['template', 'receipt', 'ebook'])]}">
+                            <page string="Template" invisible="message_type not in ['template', 'receipt', 'ebook']">
                                 <group>
                                     <field name="template_name"/>
                                 </group>
@@ -71,7 +71,7 @@
                                 <field name="attachment_ids" widget="many2many_binary"/>
                             </page>
                             
-                            <page string="Error Details" attrs="{'invisible': [('state', '!=', 'failed')]}">
+                            <page string="Error Details" invisible="state != 'failed'">
                                 <field name="error_message" widget="text"/>
                             </page>
                         </notebook>
