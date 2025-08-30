@@ -44,7 +44,7 @@
                         </group>
                         
                         <notebook>
-                            <page string="Twilio Configuration" attrs="{'invisible': [('provider', '!=', 'twilio')]}">
+                            <page string="Twilio Configuration" invisible="provider != 'twilio'">
                                 <group>
                                     <field name="twilio_account_sid" password="True"/>
                                     <field name="twilio_auth_token" password="True"/>
@@ -60,7 +60,7 @@
                                 </div>
                             </page>
                             
-                            <page string="Meta Configuration" attrs="{'invisible': [('provider', '!=', 'meta')]}">
+                            <page string="Meta Configuration" invisible="provider != 'meta'">
                                 <group>
                                     <field name="meta_access_token" password="True"/>
                                     <field name="meta_phone_number_id"/>
