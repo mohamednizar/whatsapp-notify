@@ -116,6 +116,128 @@ class WhatsAppMessage(models.Model):
         help='When the message was read'
     )
     
+    # Enhanced logging fields
+    api_request_data = fields.Text(
+        string='API Request Data',
+        help='JSON data sent to the WhatsApp API'
+    )
+    
+    api_response_data = fields.Text(
+        string='API Response Data',
+        help='Full response received from the WhatsApp API'
+    )
+    
+    api_status_code = fields.Integer(
+        string='API Status Code',
+        help='HTTP status code from the API response'
+    )
+    
+    failure_reason = fields.Selection([
+        ('invalid_phone', 'Invalid Phone Number'),
+        ('not_whatsapp', 'Number Not on WhatsApp'),
+        ('blocked_contact', 'Contact Blocked Us'),
+        ('api_limit', 'API Rate Limit Exceeded'),
+        ('template_rejected', 'Template Rejected'),
+        ('media_failed', 'Media Upload Failed'),
+        ('network_error', 'Network Connection Error'),
+        ('auth_error', 'Authentication Error'),
+        ('config_error', 'Configuration Error'),
+        ('provider_error', 'Provider Service Error'),
+        ('unknown_error', 'Unknown Error'),
+    ], string='Failure Reason', help='Specific reason why the message failed')
+    
+    retry_count = fields.Integer(
+        string='Retry Count',
+        default=0,
+        help='Number of times this message has been retried'
+    )
+    
+    last_retry_date = fields.Datetime(
+        string='Last Retry Date',
+        help='When the message was last retried'
+    )
+    
+    delivery_status = fields.Selection([
+        ('pending', 'Pending'),
+        ('delivered', 'Delivered'),
+        ('failed', 'Delivery Failed'),
+        ('read', 'Read by Recipient'),
+    ], string='Delivery Status', help='Actual delivery status from WhatsApp')
+    
+    webhook_data = fields.Text(
+        string='Webhook Data',
+        help='Delivery status updates received via webhooks'
+    )
+    
+    # Computed fields for better display
+    failure_reason_display = fields.Char(
+        string='Failure Reason',
+        compute='_compute_failure_reason_display',
+        help='Human-readable description of the failure reason'
+    )
+    
+    can_retry = fields.Boolean(
+        string='Can Retry',
+        compute='_compute_can_retry',
+        help='Whether this message can be retried'
+    )
+    
+    status_summary = fields.Char(
+        string='Status Summary',
+        compute='_compute_status_summary',
+        help='Summary of message status with key details'
+    )
+    
+    @api.depends('failure_reason')
+    def _compute_failure_reason_display(self):
+        """Compute human-readable failure reason"""
+        reason_map = {
+            'invalid_phone': 'Invalid or malformed phone number',
+            'not_whatsapp': 'Phone number is not registered on WhatsApp',
+            'blocked_contact': 'Contact has blocked this WhatsApp Business number',
+            'api_limit': 'API rate limit exceeded - too many requests',
+            'template_rejected': 'Message template was rejected by WhatsApp',
+            'media_failed': 'Media file upload or processing failed',
+            'network_error': 'Network connection error - check internet connectivity',
+            'auth_error': 'Authentication failed - check API credentials',
+            'config_error': 'WhatsApp configuration is missing or invalid',
+            'provider_error': 'WhatsApp provider service error - try again later',
+            'unknown_error': 'Unknown error occurred - check logs for details',
+        }
+        
+        for record in self:
+            record.failure_reason_display = reason_map.get(record.failure_reason, 'No error')
+    
+    @api.depends('state', 'retry_count')
+    def _compute_can_retry(self):
+        """Compute if message can be retried"""
+        for record in self:
+            # Allow retry for failed messages, but limit to 3 retries
+            record.can_retry = record.state == 'failed' and record.retry_count < 3
+    
+    @api.depends('state', 'delivery_status', 'failure_reason', 'retry_count')
+    def _compute_status_summary(self):
+        """Compute status summary for quick overview"""
+        for record in self:
+            if record.state == 'draft':
+                record.status_summary = 'Ready to send'
+            elif record.state == 'sending':
+                record.status_summary = 'Sending to WhatsApp API...'
+            elif record.state == 'sent':
+                if record.delivery_status == 'delivered':
+                    record.status_summary = 'Successfully delivered'
+                elif record.delivery_status == 'read':
+                    record.status_summary = 'Delivered and read'
+                elif record.delivery_status == 'failed':
+                    record.status_summary = 'Sent but delivery failed'
+                else:
+                    record.status_summary = 'Sent - delivery status pending'
+            elif record.state == 'failed':
+                retry_info = f" (Retried {record.retry_count}x)" if record.retry_count > 0 else ""
+                record.status_summary = f'Failed: {record.failure_reason_display}{retry_info}'
+            else:
+                record.status_summary = record.state.title()
+    
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
         """Update phone number when partner changes"""
@@ -129,6 +251,16 @@ class WhatsAppMessage(models.Model):
         if self.state != 'draft':
             raise UserError("Only draft messages can be sent")
         
+        # Prepare request data for logging
+        request_data = {
+            'phone_number': self.phone_number,
+            'message_type': self.message_type,
+            'content': self.content,
+            'template_name': self.template_name,
+            'template_variables': self.template_variables,
+            'timestamp': fields.Datetime.now().isoformat()
+        }
+        
         try:
             # Import the WhatsApp service
             from ..services.whatsapp_service import WhatsAppService
@@ -136,15 +268,17 @@ class WhatsAppMessage(models.Model):
             # Get configuration
             config = self.config_id or self.env['whatsapp.config'].get_default_config()
             if not config:
+                self._log_failure('config_error', "No WhatsApp configuration found. Please configure a provider first.", request_data)
                 raise UserError("No WhatsApp configuration found. Please configure a provider first.")
             
             # Initialize service
             service = WhatsAppService(config_record=config)
             
-            # Update state
+            # Update state and log request
             self.write({
                 'state': 'sending',
-                'config_id': config.id
+                'config_id': config.id,
+                'api_request_data': json.dumps(request_data, indent=2)
             })
             
             # Send based on message type
@@ -170,6 +304,7 @@ class WhatsAppMessage(models.Model):
             elif self.message_type in ['receipt', 'ebook', 'attachment']:
                 # Handle file attachments
                 if not self.attachment_ids:
+                    self._log_failure('media_failed', "File attachment is required for this message type", request_data)
                     raise UserError("File attachment is required for this message type")
                 
                 attachment = self.attachment_ids[0]  # Use first attachment
@@ -200,12 +335,18 @@ class WhatsAppMessage(models.Model):
                         [file_path]
                     )
             
+            # Log API response
+            if result:
+                self.api_response_data = json.dumps(result, indent=2)
+                self.api_status_code = result.get('status_code', 0)
+            
             # Update based on result
             if result and result.get('success'):
                 self.write({
                     'state': 'sent',
                     'sent_date': fields.Datetime.now(),
-                    'provider_message_id': result.get('message_id')
+                    'provider_message_id': result.get('message_id'),
+                    'delivery_status': 'pending'
                 })
                 
                 return {
@@ -213,32 +354,88 @@ class WhatsAppMessage(models.Model):
                     'tag': 'display_notification',
                     'params': {
                         'title': 'Message Sent',
-                        'message': f'WhatsApp message sent successfully to {self.phone_number}',
+                        'message': f'WhatsApp message sent successfully to {self.phone_number}. Check WhatsApp Logs for delivery status.',
                         'type': 'success',
                         'sticky': False,
                     }
                 }
             else:
                 error_msg = result.get('error', 'Unknown error') if result else 'Unknown error'
-                self.write({
-                    'state': 'failed',
-                    'error_message': error_msg
-                })
+                failure_reason = self._determine_failure_reason(result)
+                self._log_failure(failure_reason, error_msg, request_data, result)
                 raise UserError(f"Failed to send message: {error_msg}")
                 
         except Exception as e:
-            _logger.error(f"Error sending WhatsApp message: {str(e)}")
-            self.write({
-                'state': 'failed',
-                'error_message': str(e)
-            })
-            raise UserError(f"Error sending message: {str(e)}")
+            error_msg = str(e)
+            _logger.error(f"Error sending WhatsApp message: {error_msg}")
+            failure_reason = self._determine_failure_reason_from_exception(e)
+            self._log_failure(failure_reason, error_msg, request_data)
+            raise UserError(f"Error sending message: {error_msg}")
+    
+    def _log_failure(self, failure_reason, error_msg, request_data, response_data=None):
+        """Log failure details"""
+        self.write({
+            'state': 'failed',
+            'error_message': error_msg,
+            'failure_reason': failure_reason,
+            'api_request_data': json.dumps(request_data, indent=2),
+            'api_response_data': json.dumps(response_data, indent=2) if response_data else None,
+            'api_status_code': response_data.get('status_code', 0) if response_data else 0
+        })
+    
+    def _determine_failure_reason(self, result):
+        """Determine failure reason from API result"""
+        if not result:
+            return 'unknown_error'
+        
+        error_msg = result.get('error', '').lower()
+        status_code = result.get('status_code', 0)
+        
+        if status_code == 401:
+            return 'auth_error'
+        elif status_code == 429:
+            return 'api_limit'
+        elif 'invalid' in error_msg and 'phone' in error_msg:
+            return 'invalid_phone'
+        elif 'not on whatsapp' in error_msg:
+            return 'not_whatsapp'
+        elif 'blocked' in error_msg:
+            return 'blocked_contact'
+        elif 'template' in error_msg:
+            return 'template_rejected'
+        elif 'media' in error_msg or 'file' in error_msg:
+            return 'media_failed'
+        elif status_code >= 500:
+            return 'provider_error'
+        else:
+            return 'unknown_error'
+    
+    def _determine_failure_reason_from_exception(self, exception):
+        """Determine failure reason from Python exception"""
+        error_msg = str(exception).lower()
+        
+        if 'connection' in error_msg or 'network' in error_msg:
+            return 'network_error'
+        elif 'authentication' in error_msg or 'auth' in error_msg:
+            return 'auth_error'
+        elif 'configuration' in error_msg or 'config' in error_msg:
+            return 'config_error'
+        elif 'file' in error_msg or 'attachment' in error_msg:
+            return 'media_failed'
+        else:
+            return 'unknown_error'
     
     def action_retry_send(self):
         """Retry sending a failed message"""
         self.ensure_one()
         if self.state == 'failed':
-            self.state = 'draft'
+            self.write({
+                'state': 'draft',
+                'retry_count': self.retry_count + 1,
+                'last_retry_date': fields.Datetime.now(),
+                'error_message': False,  # Clear previous error
+                'failure_reason': False
+            })
             return self.action_send_message()
         else:
             raise UserError("Only failed messages can be retried")
@@ -264,3 +461,16 @@ class WhatsAppMessage(models.Model):
             values['template_variables'] = json.dumps(template_vars)
             
         return self.create(values)
+    
+    def action_view_details(self):
+        """Open detailed view of the message"""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': f'WhatsApp Message Details: {self.subject}',
+            'res_model': 'whatsapp.message',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'view_id': self.env.ref('whatsapp_notify.view_whatsapp_message_form').id,
+            'target': 'current',
+        }

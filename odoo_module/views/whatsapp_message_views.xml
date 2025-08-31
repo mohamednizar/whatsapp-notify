@@ -21,6 +21,39 @@
             </field>
         </record>
         
+        <!-- WhatsApp Logs Tree View - Enhanced for debugging -->
+        <record id="view_whatsapp_logs_tree" model="ir.ui.view">
+            <field name="name">whatsapp.logs.tree</field>
+            <field name="model">whatsapp.message</field>
+            <field name="arch" type="xml">
+                <tree string="WhatsApp Logs" 
+                      decoration-success="state=='sent' and delivery_status=='delivered'" 
+                      decoration-info="state=='sent' and delivery_status=='pending'"
+                      decoration-danger="state=='failed'" 
+                      decoration-warning="state=='draft'"
+                      decoration-muted="state=='sending'">
+                    <field name="create_date"/>
+                    <field name="subject"/>
+                    <field name="partner_id"/>
+                    <field name="phone_number"/>
+                    <field name="state"/>
+                    <field name="delivery_status"/>
+                    <field name="failure_reason_display"/>
+                    <field name="retry_count"/>
+                    <field name="api_status_code"/>
+                    <field name="config_id"/>
+                    <field name="status_summary"/>
+                    <button name="action_retry_send" type="object" string="Retry" 
+                            icon="fa-refresh" 
+                            invisible="not can_retry"
+                            title="Retry sending this message"/>
+                    <button name="action_view_details" type="object" string="Details" 
+                            icon="fa-info-circle" 
+                            title="View detailed logs"/>
+                </tree>
+            </field>
+        </record>
+        
         <!-- Form View -->
         <record id="view_whatsapp_message_form" model="ir.ui.view">
             <field name="name">whatsapp.message.form</field>
@@ -31,15 +64,28 @@
                         <button name="action_send_message" type="object" string="Send Message" 
                                 invisible="state != 'draft'" class="btn-primary"/>
                         <button name="action_retry_send" type="object" string="Retry Send" 
-                                invisible="state != 'failed'" class="btn-warning"/>
+                                invisible="not can_retry" class="btn-warning"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,sending,sent,delivered,read"/>
                     </header>
                     <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <button class="oe_stat_button" type="object" name="action_view_details" icon="fa-info-circle">
+                                <div class="o_field_widget o_stat_info">
+                                    <span class="o_stat_text">View</span>
+                                    <span class="o_stat_text">Details</span>
+                                </div>
+                            </button>
+                        </div>
+                        
                         <div class="oe_title">
                             <h1>
                                 <field name="subject"/>
                             </h1>
+                            <h3>
+                                <field name="status_summary" readonly="1"/>
+                            </h3>
                         </div>
+                        
                         <group>
                             <group>
                                 <field name="partner_id"/>
@@ -52,7 +98,18 @@
                                 <field name="delivered_date"/>
                                 <field name="read_date"/>
                                 <field name="provider_message_id"/>
+                                <field name="delivery_status"/>
                             </group>
+                        </group>
+                        
+                        <!-- Status and Error Information -->
+                        <group string="Status Information" invisible="state not in ['failed', 'sent']">
+                            <field name="failure_reason" invisible="state != 'failed'"/>
+                            <field name="failure_reason_display" invisible="state != 'failed'"/>
+                            <field name="retry_count" invisible="retry_count == 0"/>
+                            <field name="last_retry_date" invisible="not last_retry_date"/>
+                            <field name="can_retry" invisible="1"/>
+                            <field name="api_status_code" invisible="not api_status_code"/>
                         </group>
                         
                         <notebook>
@@ -72,7 +129,22 @@
                             </page>
                             
                             <page string="Error Details" invisible="state != 'failed'">
-                                <field name="error_message" widget="text"/>
+                                <group>
+                                    <field name="error_message" widget="text"/>
+                                </group>
+                            </page>
+                            
+                            <page string="API Logs" invisible="not api_request_data and not api_response_data">
+                                <group string="Request Data">
+                                    <field name="api_request_data" widget="ace" options="{'mode': 'json'}" readonly="1"/>
+                                </group>
+                                <group string="Response Data">
+                                    <field name="api_response_data" widget="ace" options="{'mode': 'json'}" readonly="1"/>
+                                </group>
+                            </page>
+                            
+                            <page string="Webhook Data" invisible="not webhook_data">
+                                <field name="webhook_data" widget="ace" options="{'mode': 'json'}" readonly="1"/>
                             </page>
                         </notebook>
                     </sheet>
@@ -90,20 +162,52 @@
                     <field name="partner_id"/>
                     <field name="phone_number"/>
                     <field name="content"/>
+                    <field name="provider_message_id"/>
+                    
+                    <!-- Status Filters -->
                     <filter name="draft" string="Draft" domain="[('state', '=', 'draft')]"/>
                     <filter name="sent" string="Sent" domain="[('state', '=', 'sent')]"/>
                     <filter name="failed" string="Failed" domain="[('state', '=', 'failed')]"/>
                     <separator/>
+                    
+                    <!-- Delivery Status Filters -->
+                    <filter name="delivered" string="Delivered" domain="[('delivery_status', '=', 'delivered')]"/>
+                    <filter name="delivery_pending" string="Delivery Pending" domain="[('delivery_status', '=', 'pending')]"/>
+                    <filter name="delivery_failed" string="Delivery Failed" domain="[('delivery_status', '=', 'failed')]"/>
+                    <separator/>
+                    
+                    <!-- Failure Reason Filters -->
+                    <filter name="invalid_phone" string="Invalid Phone" domain="[('failure_reason', '=', 'invalid_phone')]"/>
+                    <filter name="not_whatsapp" string="Not on WhatsApp" domain="[('failure_reason', '=', 'not_whatsapp')]"/>
+                    <filter name="blocked_contact" string="Blocked Contact" domain="[('failure_reason', '=', 'blocked_contact')]"/>
+                    <filter name="api_limit" string="API Limit" domain="[('failure_reason', '=', 'api_limit')]"/>
+                    <filter name="config_error" string="Config Error" domain="[('failure_reason', '=', 'config_error')]"/>
+                    <separator/>
+                    
+                    <!-- Message Type Filters -->
                     <filter name="text_messages" string="Text Messages" domain="[('message_type', '=', 'text')]"/>
                     <filter name="template_messages" string="Template Messages" domain="[('message_type', '=', 'template')]"/>
                     <filter name="receipt_messages" string="Receipts" domain="[('message_type', '=', 'receipt')]"/>
                     <separator/>
+                    
+                    <!-- Retry Filters -->
+                    <filter name="can_retry" string="Can Retry" domain="[('can_retry', '=', True)]"/>
+                    <filter name="retried" string="Retried Messages" domain="[('retry_count', '>', 0)]"/>
+                    <separator/>
+                    
+                    <!-- Date Filters -->
                     <filter name="today" string="Today" domain="[('create_date', '&gt;=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
                     <filter name="this_week" string="This Week" domain="[('create_date', '&gt;=', (datetime.datetime.now() - datetime.timedelta(days=7)))]"/>
+                    <filter name="last_24h" string="Last 24 Hours" domain="[('create_date', '&gt;=', (datetime.datetime.now() - datetime.timedelta(hours=24)))]"/>
+                    
+                    <!-- Group By Options -->
                     <group expand="0" string="Group By">
                         <filter name="group_by_partner" string="Contact" context="{'group_by': 'partner_id'}"/>
                         <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+                        <filter name="group_by_delivery_status" string="Delivery Status" context="{'group_by': 'delivery_status'}"/>
+                        <filter name="group_by_failure_reason" string="Failure Reason" context="{'group_by': 'failure_reason'}"/>
                         <filter name="group_by_type" string="Message Type" context="{'group_by': 'message_type'}"/>
+                        <filter name="group_by_config" string="Configuration" context="{'group_by': 'config_id'}"/>
                         <filter name="group_by_date" string="Date" context="{'group_by': 'create_date:day'}"/>
                     </group>
                 </search>
@@ -122,6 +226,29 @@
                 </p>
                 <p>
                     Start sending WhatsApp messages to your contacts using the Send Message or Send Template options.
+                </p>
+            </field>
+        </record>
+        
+        <!-- WhatsApp Logs Action -->
+        <record id="action_whatsapp_logs" model="ir.actions.act_window">
+            <field name="name">WhatsApp Logs</field>
+            <field name="res_model">whatsapp.message</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_ids" eval="[(5, 0, 0), (0, 0, {'view_mode': 'tree', 'view_id': ref('view_whatsapp_logs_tree')}), (0, 0, {'view_mode': 'form', 'view_id': ref('view_whatsapp_message_form')})]"/>
+            <field name="context">{'search_default_last_24h': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    No WhatsApp logs found!
+                </p>
+                <p>
+                    This page shows detailed logs for all WhatsApp messages including:
+                    <ul>
+                        <li>Delivery status and failure reasons</li>
+                        <li>API request/response details</li>
+                        <li>Retry information</li>
+                        <li>Error diagnostics</li>
+                    </ul>
                 </p>
             </field>
         </record>

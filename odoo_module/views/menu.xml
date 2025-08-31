@@ -37,6 +37,12 @@
                   action="action_whatsapp_message"
                   sequence="10"/>
         
+        <menuitem id="menu_whatsapp_logs"
+                  name="WhatsApp Logs"
+                  parent="menu_whatsapp_messages"
+                  action="action_whatsapp_logs"
+                  sequence="15"/>
+
         <menuitem id="menu_whatsapp_messages_send"
                   name="Send Message"
                   parent="menu_whatsapp_messages"
