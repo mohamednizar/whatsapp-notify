@@ -245,6 +245,21 @@ class WhatsAppMessage(models.Model):
         if self.partner_id and self.partner_id.mobile:
             self.phone_number = self.partner_id.mobile
     
+    def _safe_json_dumps(self, data, indent=2):
+        """Safely serialize data to JSON, handling circular references"""
+        def default_serializer(obj):
+            """Custom serializer for non-serializable objects"""
+            if hasattr(obj, '__dict__'):
+                return f"<{type(obj).__name__} object>"
+            return str(obj)
+        
+        try:
+            return json.dumps(data, indent=indent, default=default_serializer)
+        except (TypeError, ValueError) as e:
+            _logger.warning(f"JSON serialization warning: {str(e)}")
+            # Fallback: convert to string representation
+            return json.dumps(str(data), indent=indent)
+
     def action_send_message(self):
         """Send the WhatsApp message"""
         self.ensure_one()
@@ -285,7 +300,7 @@ class WhatsAppMessage(models.Model):
             self.write({
                 'state': 'sending',
                 'config_id': config.id,
-                'api_request_data': json.dumps(request_data, indent=2)
+                'api_request_data': self._safe_json_dumps(request_data)
             })
             
             # Send based on message type
@@ -342,34 +357,72 @@ class WhatsAppMessage(models.Model):
                         [file_path]
                     )
             
-            # Log API response
+            # Safely extract and log debug information
+            debug_data_to_log = None
             if result:
-                self.api_response_data = json.dumps(result, indent=2)
-                self.api_status_code = result.get('status_code', 0)
+                # Create a clean copy of result data for logging, excluding circular references
+                safe_result = {
+                    'success': result.get('success'),
+                    'message_id': result.get('message_id'),
+                    'status': result.get('status'),
+                    'error': result.get('error'),
+                    'error_code': result.get('error_code'),
+                    'status_code': result.get('status_code')
+                }
                 
-                # Log debug information if available
+                # Safely add provider response if it exists
+                provider_response = result.get('provider_response')
+                if provider_response:
+                    try:
+                        # Only include serializable parts of provider response
+                        safe_provider_response = {}
+                        for key, value in provider_response.items():
+                            if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                                safe_provider_response[key] = value
+                            else:
+                                safe_provider_response[key] = str(value)
+                        safe_result['provider_response'] = safe_provider_response
+                    except Exception as e:
+                        _logger.warning(f"Could not serialize provider response: {str(e)}")
+                        safe_result['provider_response'] = str(provider_response)
+                
+                # Log the safe result data
+                debug_data_to_log = self._safe_json_dumps(safe_result)
+                
+                # Also update request data with debug info if available
                 debug_info = result.get('debug_info')
                 if debug_info:
-                    debug_log = {
-                        'phone_validation': debug_info.get('phone_validation'),
-                        'api_request': debug_info.get('api_request'),
-                        'api_response': debug_info.get('api_response'),
-                        'provider_response': result.get('provider_response')
-                    }
-                    
-                    # Update request data with enhanced debug info
-                    enhanced_request_data = request_data.copy()
-                    enhanced_request_data['debug_info'] = debug_log
-                    self.api_request_data = json.dumps(enhanced_request_data, indent=2)
+                    safe_debug_info = {}
+                    try:
+                        # Safely extract only serializable debug information
+                        if 'phone_validation' in debug_info:
+                            safe_debug_info['phone_validation'] = debug_info['phone_validation']
+                        if 'api_request' in debug_info and isinstance(debug_info['api_request'], dict):
+                            safe_debug_info['api_request'] = debug_info['api_request']
+                        
+                        enhanced_request_data = request_data.copy()
+                        enhanced_request_data['debug_info'] = safe_debug_info
+                        self.api_request_data = self._safe_json_dumps(enhanced_request_data)
+                    except Exception as e:
+                        _logger.warning(f"Could not serialize debug info: {str(e)}")
             
             # Update based on result
             if result and result.get('success'):
-                self.write({
+                # Update the record with safe serialized data
+                update_values = {
                     'state': 'sent',
                     'sent_date': fields.Datetime.now(),
                     'provider_message_id': result.get('message_id'),
                     'delivery_status': 'pending'
-                })
+                }
+                
+                if debug_data_to_log:
+                    update_values['api_response_data'] = debug_data_to_log
+                    
+                if result.get('status_code'):
+                    update_values['api_status_code'] = result.get('status_code', 0)
+                
+                self.write(update_values)
                 
                 return {
                     'type': 'ir.actions.client',
@@ -396,14 +449,29 @@ class WhatsAppMessage(models.Model):
     
     def _log_failure(self, failure_reason, error_msg, request_data, response_data=None):
         """Log failure details"""
-        self.write({
+        update_values = {
             'state': 'failed',
             'error_message': error_msg,
             'failure_reason': failure_reason,
-            'api_request_data': json.dumps(request_data, indent=2),
-            'api_response_data': json.dumps(response_data, indent=2) if response_data else None,
+            'api_request_data': self._safe_json_dumps(request_data),
             'api_status_code': response_data.get('status_code', 0) if response_data else 0
-        })
+        }
+        
+        if response_data:
+            # Create a safe copy of response data for logging
+            safe_response_data = {}
+            try:
+                for key, value in response_data.items():
+                    if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                        safe_response_data[key] = value
+                    else:
+                        safe_response_data[key] = str(value)
+                update_values['api_response_data'] = self._safe_json_dumps(safe_response_data)
+            except Exception as e:
+                _logger.warning(f"Could not serialize response data: {str(e)}")
+                update_values['api_response_data'] = self._safe_json_dumps(str(response_data))
+        
+        self.write(update_values)
     
     def _determine_failure_reason(self, result):
         """Determine failure reason from API result"""
@@ -534,16 +602,30 @@ class WhatsAppMessage(models.Model):
                 f"🔍 Debug test for message: {self.subject}"
             )
             
-            # Log debug results
+            # Safely log debug results
             debug_data = {
                 'timestamp': fields.Datetime.now().isoformat(),
                 'message_id': self.id,
-                'debug_result': debug_result
+                'debug_summary': debug_result.get('debug', {}).get('steps', []) if debug_result.get('debug') else []
             }
             
+            # Safely extract debug details
+            safe_debug_result = {}
+            try:
+                if debug_result.get('debug'):
+                    debug_info = debug_result['debug']
+                    for key, value in debug_info.items():
+                        if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                            safe_debug_result[key] = value
+                        else:
+                            safe_debug_result[key] = str(value)
+            except Exception as e:
+                _logger.warning(f"Could not serialize debug result: {str(e)}")
+                safe_debug_result = {'error': 'Debug result serialization failed'}
+            
             self.write({
-                'api_request_data': json.dumps(debug_data, indent=2),
-                'api_response_data': json.dumps(debug_result.get('debug', {}), indent=2)
+                'api_request_data': self._safe_json_dumps(debug_data),
+                'api_response_data': self._safe_json_dumps(safe_debug_result)
             })
             
             # Show results in a message
