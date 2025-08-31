@@ -5,7 +5,6 @@ from odoo.exceptions import UserError
 import logging
 import json
 from datetime import datetime
-from ..services.whatsapp_service import WhatsAppService
 
 _logger = logging.getLogger(__name__)
 
@@ -268,6 +267,9 @@ class WhatsAppMessage(models.Model):
             if not config:
                 self._log_failure('config_error', "No WhatsApp configuration found. Please configure a provider first.", request_data)
                 raise UserError("No WhatsApp configuration found. Please configure a provider first.")
+            
+            # Import the WhatsApp service
+            from ..services.whatsapp_service import WhatsAppService
             
             # Initialize service
             service = WhatsAppService(config_record=config)
