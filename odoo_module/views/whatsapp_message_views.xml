@@ -194,7 +194,7 @@
                     <separator/>
                     
                     <!-- Retry Filters -->
-                    <filter name="can_retry" string="Can Retry" domain="[('can_retry', '=', True)]"/>
+<!--                     <filter name="can_retry" string="Can Retry" domain="[('can_retry', '=', True)]"/> -->
                     <filter name="retried" string="Retried Messages" domain="[('retry_count', '>', 0)]"/>
                     <separator/>
                     
