@@ -3,6 +3,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 import logging
+import importlib.util
 
 _logger = logging.getLogger(__name__)
 
@@ -133,8 +134,14 @@ class WhatsAppConfig(models.Model):
         """Test the WhatsApp provider connection"""
         self.ensure_one()
         try:
-            # Import the WhatsApp service
-            from ..services.whatsapp_service import WhatsAppService
+            # Dynamically import the WhatsApp service to avoid module loading conflicts
+            import importlib
+            import os
+            services_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services', 'whatsapp_service')
+            spec = importlib.util.spec_from_file_location("whatsapp_service", services_path + '.py')
+            whatsapp_service_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(whatsapp_service_module)
+            WhatsAppService = whatsapp_service_module.WhatsAppService
             
             service = WhatsAppService(config_record=self)
             result = service.test_connection()

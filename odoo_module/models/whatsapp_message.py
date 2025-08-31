@@ -4,6 +4,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 import logging
 import json
+import importlib.util
 from datetime import datetime
 
 _logger = logging.getLogger(__name__)
@@ -268,8 +269,14 @@ class WhatsAppMessage(models.Model):
                 self._log_failure('config_error', "No WhatsApp configuration found. Please configure a provider first.", request_data)
                 raise UserError("No WhatsApp configuration found. Please configure a provider first.")
             
-            # Import the WhatsApp service
-            from ..services.whatsapp_service import WhatsAppService
+            # Dynamically import the WhatsApp service to avoid module loading conflicts
+            import importlib
+            import os
+            services_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services', 'whatsapp_service')
+            spec = importlib.util.spec_from_file_location("whatsapp_service", services_path + '.py')
+            whatsapp_service_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(whatsapp_service_module)
+            WhatsAppService = whatsapp_service_module.WhatsAppService
             
             # Initialize service
             service = WhatsAppService(config_record=config)

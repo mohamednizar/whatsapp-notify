@@ -1,3 +1,2 @@
 # WhatsApp Services
-
-from . import whatsapp_service
+# Services are dynamically imported to avoid module loading conflicts during installation
