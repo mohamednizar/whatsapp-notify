@@ -43,6 +43,9 @@
                     <field name="api_status_code"/>
                     <field name="config_id"/>
                     <field name="status_summary"/>
+                    <!-- Added hidden field to satisfy modifier validation -->
+                    <field name="can_retry" invisible="1"/>
+                    
                     <button name="action_retry_send" type="object" string="Retry" 
                             icon="fa-refresh" 
                             invisible="not can_retry"
