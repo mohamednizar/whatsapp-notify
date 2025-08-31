@@ -346,6 +346,21 @@ class WhatsAppMessage(models.Model):
             if result:
                 self.api_response_data = json.dumps(result, indent=2)
                 self.api_status_code = result.get('status_code', 0)
+                
+                # Log debug information if available
+                debug_info = result.get('debug_info')
+                if debug_info:
+                    debug_log = {
+                        'phone_validation': debug_info.get('phone_validation'),
+                        'api_request': debug_info.get('api_request'),
+                        'api_response': debug_info.get('api_response'),
+                        'provider_response': result.get('provider_response')
+                    }
+                    
+                    # Update request data with enhanced debug info
+                    enhanced_request_data = request_data.copy()
+                    enhanced_request_data['debug_info'] = debug_log
+                    self.api_request_data = json.dumps(enhanced_request_data, indent=2)
             
             # Update based on result
             if result and result.get('success'):
@@ -360,8 +375,8 @@ class WhatsAppMessage(models.Model):
                     'type': 'ir.actions.client',
                     'tag': 'display_notification',
                     'params': {
-                        'title': 'Message Sent',
-                        'message': f'WhatsApp message sent successfully to {self.phone_number}. Check WhatsApp Logs for delivery status.',
+                        'title': 'Message Sent Successfully',
+                        'message': f'WhatsApp message sent to {self.phone_number}. Check WhatsApp Logs for delivery tracking. Message ID: {result.get("message_id", "N/A")}',
                         'type': 'success',
                         'sticky': False,
                     }
@@ -397,25 +412,71 @@ class WhatsAppMessage(models.Model):
         
         error_msg = result.get('error', '').lower()
         status_code = result.get('status_code', 0)
+        error_code = result.get('error_code')
+        error_type = result.get('error_type', '')
         
+        # Twilio-specific error codes
+        if error_code:
+            twilio_error_map = {
+                '21211': 'invalid_phone',  # Invalid 'To' phone number
+                '21214': 'invalid_phone',  # 'To' phone number cannot be reached
+                '21610': 'not_whatsapp',   # Phone number is not WhatsApp enabled
+                '21408': 'api_limit',      # Permission to send an SMS or MMS has not been enabled for the region
+                '21617': 'blocked_contact', # Contact has blocked the number
+                '21619': 'api_limit',      # SMS or MMS message body exceeds character limit
+                '30007': 'network_error',  # Message delivery: unknown error
+                '30008': 'provider_error', # Message delivery: unknown error
+            }
+            if str(error_code) in twilio_error_map:
+                return twilio_error_map[str(error_code)]
+        
+        # Meta-specific error analysis
+        if error_type:
+            meta_error_map = {
+                'OAuthException': 'auth_error',
+                'GraphMethodException': 'config_error',
+                'Application request limit reached': 'api_limit',
+                'Unsupported post request': 'config_error',
+            }
+            for error_pattern, reason in meta_error_map.items():
+                if error_pattern.lower() in error_type.lower():
+                    return reason
+        
+        # HTTP status code analysis
         if status_code == 401:
             return 'auth_error'
+        elif status_code == 403:
+            return 'blocked_contact'
         elif status_code == 429:
             return 'api_limit'
-        elif 'invalid' in error_msg and 'phone' in error_msg:
-            return 'invalid_phone'
-        elif 'not on whatsapp' in error_msg:
-            return 'not_whatsapp'
-        elif 'blocked' in error_msg:
-            return 'blocked_contact'
-        elif 'template' in error_msg:
-            return 'template_rejected'
-        elif 'media' in error_msg or 'file' in error_msg:
-            return 'media_failed'
         elif status_code >= 500:
             return 'provider_error'
-        else:
-            return 'unknown_error'
+        
+        # Content-based error analysis
+        error_patterns = {
+            'invalid phone': 'invalid_phone',
+            'not on whatsapp': 'not_whatsapp',
+            'not registered': 'not_whatsapp',
+            'blocked': 'blocked_contact',
+            'template': 'template_rejected',
+            'media': 'media_failed',
+            'file': 'media_failed',
+            'attachment': 'media_failed',
+            'rate limit': 'api_limit',
+            'limit exceeded': 'api_limit',
+            'authentication': 'auth_error',
+            'unauthorized': 'auth_error',
+            'configuration': 'config_error',
+            'network': 'network_error',
+            'connection': 'network_error',
+            'timeout': 'network_error',
+        }
+        
+        for pattern, reason in error_patterns.items():
+            if pattern in error_msg:
+                return reason
+        
+        return 'unknown_error'
     
     def _determine_failure_reason_from_exception(self, exception):
         """Determine failure reason from Python exception"""
@@ -446,6 +507,79 @@ class WhatsAppMessage(models.Model):
             return self.action_send_message()
         else:
             raise UserError("Only failed messages can be retried")
+
+    def action_debug_delivery(self):
+        """Run comprehensive delivery debugging for this message"""
+        self.ensure_one()
+        
+        try:
+            # Get configuration
+            config = self.config_id or self.env['whatsapp.config'].get_default_config()
+            if not config:
+                raise UserError("No WhatsApp configuration found")
+            
+            # Dynamically import WhatsApp service
+            import importlib
+            import os
+            services_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'services', 'whatsapp_service')
+            spec = importlib.util.spec_from_file_location("whatsapp_service", services_path + '.py')
+            whatsapp_service_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(whatsapp_service_module)
+            WhatsAppService = whatsapp_service_module.WhatsAppService
+            
+            # Initialize service and run debug test
+            service = WhatsAppService(config_record=config)
+            debug_result = service.debug_delivery_test(
+                self.phone_number, 
+                f"🔍 Debug test for message: {self.subject}"
+            )
+            
+            # Log debug results
+            debug_data = {
+                'timestamp': fields.Datetime.now().isoformat(),
+                'message_id': self.id,
+                'debug_result': debug_result
+            }
+            
+            self.write({
+                'api_request_data': json.dumps(debug_data, indent=2),
+                'api_response_data': json.dumps(debug_result.get('debug', {}), indent=2)
+            })
+            
+            # Show results in a message
+            if debug_result['success']:
+                message = f"✅ Debug test successful!\n\nMessage ID: {debug_result.get('message_id')}\n\nCheck the API Request/Response Data fields for detailed debugging information."
+                notification_type = 'success'
+            else:
+                error = debug_result.get('error', 'Unknown error')
+                message = f"❌ Debug test failed: {error}\n\nCheck the API Request/Response Data fields for detailed troubleshooting information."
+                notification_type = 'danger'
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'WhatsApp Delivery Debug Test',
+                    'message': message,
+                    'type': notification_type,
+                    'sticky': True,
+                }
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            _logger.error(f"Debug delivery test failed: {error_msg}")
+            
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': 'Debug Test Error',
+                    'message': f"Debug test failed: {error_msg}",
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
     
     @api.model
     def create_from_partner(self, partner_id, message_type='text', content='', template_name=None, template_vars=None):

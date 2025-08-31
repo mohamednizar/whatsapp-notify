@@ -49,6 +49,7 @@ Use Cases:
         'views/whatsapp_template_views.xml',
         'wizard/whatsapp_send_message_wizard.xml',
         'wizard/whatsapp_send_template_wizard.xml',
+        'views/whatsapp_debug_wizard_views.xml',
         'views/res_partner_views.xml',
         'views/menu.xml',
     ],

@@ -27,6 +27,7 @@
                 <form string="WhatsApp Configuration">
                     <header>
                         <button name="test_connection" type="object" string="Test Connection" class="btn-primary"/>
+                        <button name="action_debug_test_message" type="object" string="🔍 Debug Test" class="btn-info" title="Run comprehensive delivery debugging test"/>
                     </header>
                     <sheet>
                         <div class="oe_title">

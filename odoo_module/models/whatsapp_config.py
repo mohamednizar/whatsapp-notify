@@ -163,3 +163,19 @@ class WhatsAppConfig(models.Model):
         except Exception as e:
             _logger.error(f"WhatsApp connection test failed: {str(e)}")
             raise UserError(f"Connection test failed: {str(e)}")
+
+    def action_debug_test_message(self):
+        """Send a debug test message to verify delivery"""
+        self.ensure_one()
+        
+        # Create a wizard to get test phone number
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'WhatsApp Debug Test',
+            'res_model': 'whatsapp.debug.test.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_config_id': self.id,
+            }
+        }

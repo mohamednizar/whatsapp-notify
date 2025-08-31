@@ -50,6 +50,9 @@
                             icon="fa-refresh" 
                             invisible="not can_retry"
                             title="Retry sending this message"/>
+                    <button name="action_debug_delivery" type="object" string="🔍 Debug" 
+                            icon="fa-bug" 
+                            title="Run delivery debugging test"/>
                     <button name="action_view_details" type="object" string="Details" 
                             icon="fa-info-circle" 
                             title="View detailed logs"/>
@@ -68,6 +71,8 @@
                                 invisible="state != 'draft'" class="btn-primary"/>
                         <button name="action_retry_send" type="object" string="Retry Send" 
                                 invisible="not can_retry" class="btn-warning"/>
+                        <button name="action_debug_delivery" type="object" string="🔍 Debug Delivery" 
+                                class="btn-info" title="Run comprehensive delivery debugging test"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,sending,sent,delivered,read"/>
                     </header>
                     <sheet>
