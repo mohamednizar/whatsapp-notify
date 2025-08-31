@@ -44,6 +44,7 @@ Use Cases:
         'security/ir.model.access.csv',
         'security/whatsapp_security.xml',
         'data/whatsapp_templates.xml',
+        'views/whatsapp_logs_views.xml',
         'views/whatsapp_config_views.xml',
         'views/whatsapp_message_views.xml',
         'views/whatsapp_template_views.xml',
