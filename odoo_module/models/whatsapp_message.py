@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 import logging
 import json
 from datetime import datetime
+from ..services.whatsapp_service import WhatsAppService
 
 _logger = logging.getLogger(__name__)
 
@@ -262,9 +263,6 @@ class WhatsAppMessage(models.Model):
         }
         
         try:
-            # Import the WhatsApp service
-            from ..services.whatsapp_service import WhatsAppService
-            
             # Get configuration
             config = self.config_id or self.env['whatsapp.config'].get_default_config()
             if not config:
