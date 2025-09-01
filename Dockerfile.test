@@ -4,6 +4,9 @@ FROM odoo:17.0
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ODOO_RC=/etc/odoo/odoo.conf
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV LANGUAGE=en_US:en
 
 # Install additional system dependencies
 USER root
@@ -12,6 +15,10 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     postgresql-client \
+    libxml2-utils \
+    locales \
+    && locale-gen en_US.UTF-8 \
+    && update-locale LANG=en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies for the WhatsApp module

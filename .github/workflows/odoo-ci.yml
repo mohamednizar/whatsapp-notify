@@ -82,23 +82,44 @@ jobs:
         run: |
           docker build -f Dockerfile.test -t whatsapp-notify-test:latest .
 
+      - name: Create Docker network
+        run: |
+          docker network create odoo-test-network
+
       - name: Run PostgreSQL container
         run: |
           docker run -d \
             --name postgres-test \
-            --network bridge \
+            --network odoo-test-network \
+            --network-alias postgres \
             -e POSTGRES_DB=odoo_test \
             -e POSTGRES_USER=odoo \
             -e POSTGRES_PASSWORD=odoo \
+            -e LC_ALL=C.UTF-8 \
+            -e LANG=C.UTF-8 \
             -p 5432:5432 \
             postgres:15
 
       - name: Wait for PostgreSQL
         run: |
-          until docker exec postgres-test pg_isready -U odoo -d odoo_test; do
-            echo "Waiting for PostgreSQL..."
+          echo "Waiting for PostgreSQL to be ready..."
+          timeout=60
+          count=0
+          while [ $count -lt $timeout ]; do
+            if docker exec postgres-test pg_isready -U odoo -d odoo_test -h localhost; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "PostgreSQL not ready yet... waiting (attempt $((count+1))/$timeout)"
             sleep 2
+            count=$((count+1))
           done
+          
+          if [ $count -eq $timeout ]; then
+            echo "PostgreSQL failed to start within timeout"
+            docker logs postgres-test
+            exit 1
+          fi
 
       - name: Test Module Installation
         id: test_install
@@ -107,11 +128,13 @@ jobs:
           
           # Run the installation test
           docker run --rm \
-            --network bridge \
-            -e HOST=postgres-test \
+            --network odoo-test-network \
+            -e HOST=postgres \
             -e USER=odoo \
             -e PASSWORD=odoo \
             -e POSTGRES_DB=odoo_test \
+            -e LC_ALL=C.UTF-8 \
+            -e LANG=C.UTF-8 \
             -v $(pwd)/test/results:/opt/test-results \
             -v $(pwd)/test/logs:/var/log/odoo \
             whatsapp-notify-test:latest \
@@ -161,6 +184,7 @@ jobs:
         run: |
           docker stop postgres-test || true
           docker rm postgres-test || true
+          docker network rm odoo-test-network || true
 
   integration-test:
     name: Full Integration Test
@@ -182,8 +206,21 @@ jobs:
 
       - name: Run full integration test with Docker Compose
         run: |
-          # Start the test environment
-          docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+          # Start the test environment with timeout
+          timeout 600 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+          
+          # Check exit code
+          test_exit_code=$?
+          
+          if [ $test_exit_code -eq 0 ]; then
+            echo "✅ Integration tests completed successfully"
+          elif [ $test_exit_code -eq 124 ]; then
+            echo "❌ Integration tests timed out after 10 minutes"
+            exit 1
+          else
+            echo "❌ Integration tests failed with exit code: $test_exit_code"
+            exit 1
+          fi
           
           # Check if tests passed
           if [ -f test/results/test-status.txt ]; then
@@ -210,7 +247,7 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          docker-compose -f docker-compose.test.yml down -v
+          docker compose -f docker-compose.test.yml down -v
 
   test-summary:
     name: Test Summary

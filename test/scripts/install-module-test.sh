@@ -47,12 +47,34 @@ wait_for_odoo() {
 test_module_installation() {
     log "Starting module installation test..."
     
-    # Wait for PostgreSQL
-    log "Waiting for PostgreSQL..."
-    until pg_isready -h ${HOST:-postgres} -p ${DB_PORT:-5432} -U ${USER:-odoo}; do
-        log "PostgreSQL is not ready - sleeping"
+    # Wait for PostgreSQL with better error handling
+    log "Waiting for PostgreSQL connection..."
+    local max_db_attempts=30
+    local db_attempt=1
+    
+    while [ $db_attempt -le $max_db_attempts ]; do
+        if pg_isready -h ${HOST:-postgres} -p ${DB_PORT:-5432} -U ${USER:-odoo} -d ${POSTGRES_DB:-odoo_test}; then
+            log "PostgreSQL is ready!"
+            break
+        fi
+        log "PostgreSQL attempt $db_attempt/$max_db_attempts - not ready, waiting..."
         sleep 2
+        db_attempt=$((db_attempt + 1))
     done
+    
+    if [ $db_attempt -gt $max_db_attempts ]; then
+        log "ERROR: PostgreSQL connection failed after $max_db_attempts attempts"
+        log "Connection details: host=${HOST:-postgres}, port=${DB_PORT:-5432}, user=${USER:-odoo}, db=${POSTGRES_DB:-odoo_test}"
+        return 1
+    fi
+    
+    # Test database connection
+    log "Testing database connection..."
+    if ! psql -h ${HOST:-postgres} -p ${DB_PORT:-5432} -U ${USER:-odoo} -d ${POSTGRES_DB:-odoo_test} -c "SELECT 1;" > /dev/null 2>&1; then
+        log "ERROR: Could not connect to database"
+        return 1
+    fi
+    log "Database connection successful"
     
     # Try to install the module
     log "Installing WhatsApp Business module..."
@@ -250,11 +272,18 @@ run_comprehensive_tests() {
 # Main execution
 main() {
     log "Starting WhatsApp Business module test suite..."
+    log "Environment: HOST=${HOST:-postgres}, USER=${USER:-odoo}, DB=${POSTGRES_DB:-odoo_test}"
     
     # Install required tools if not present
     if ! command -v xmllint &> /dev/null; then
         log "Installing xmllint..."
         apt-get update && apt-get install -y libxml2-utils
+    fi
+    
+    # Install psql if not present (for database connectivity tests)
+    if ! command -v psql &> /dev/null; then
+        log "Installing PostgreSQL client..."
+        apt-get update && apt-get install -y postgresql-client
     fi
     
     # Run comprehensive tests
