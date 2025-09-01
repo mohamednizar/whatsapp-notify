@@ -46,6 +46,12 @@ class WhatsAppSendMessageWizard(models.TransientModel):
         help='Send the message immediately or save as draft'
     )
     
+    pos_order_id = fields.Many2one(
+        'pos.order',
+        string='POS Order',
+        help='Related POS order if message is sent from POS'
+    )
+    
     @api.onchange('partner_id')
     def _onchange_partner_id(self):
         """Update phone number when partner changes"""
@@ -68,6 +74,7 @@ class WhatsAppSendMessageWizard(models.TransientModel):
             'message_type': 'attachment' if self.attachment_ids else 'text',
             'content': self.message,
             'config_id': self.config_id.id if self.config_id else False,
+            'pos_order_id': self.pos_order_id.id if self.pos_order_id else False,
         }
         
         message = self.env['whatsapp.message'].create(message_vals)

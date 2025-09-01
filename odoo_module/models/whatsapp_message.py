@@ -97,6 +97,12 @@ class WhatsAppMessage(models.Model):
         help='WhatsApp configuration used to send this message'
     )
     
+    pos_order_id = fields.Many2one(
+        'pos.order',
+        string='POS Order',
+        help='Related POS order if message was sent from POS'
+    )
+    
     error_message = fields.Text(
         string='Error Message',
         help='Error details if message failed'
