@@ -44,3 +44,18 @@ temp/
 __pycache__/
 *.pyc
 *.pyo
+
+# Test artifacts and outputs
+test/logs/*
+test/results/*
+test/filestore/*
+!test/logs/.gitkeep
+!test/results/.gitkeep
+!test/filestore/.gitkeep
+
+# Docker volumes
+.docker-volumes/
+
+# Odoo specific
+*.pot
+*.mo

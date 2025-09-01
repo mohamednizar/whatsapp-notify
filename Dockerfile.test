@@ -1,0 +1,48 @@
+# Dockerfile for Odoo Module Testing
+FROM odoo:17.0
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ODOO_RC=/etc/odoo/odoo.conf
+
+# Install additional system dependencies
+USER root
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    git \
+    curl \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for the WhatsApp module
+RUN pip3 install --no-cache-dir \
+    requests \
+    python-dotenv
+
+# Create addons directory and set permissions
+RUN mkdir -p /mnt/extra-addons/whatsapp_business
+COPY odoo_module/ /mnt/extra-addons/whatsapp_business/
+RUN chown -R odoo:odoo /mnt/extra-addons
+
+# Create test configuration
+COPY test/odoo.conf /etc/odoo/odoo.conf
+RUN chown odoo:odoo /etc/odoo/odoo.conf
+
+# Create test scripts directory
+RUN mkdir -p /opt/test-scripts
+COPY test/scripts/ /opt/test-scripts/
+RUN chmod +x /opt/test-scripts/*.sh
+RUN chown -R odoo:odoo /opt/test-scripts
+
+# Switch back to odoo user
+USER odoo
+
+# Expose Odoo port
+EXPOSE 8069
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8069/web/health || exit 1
+
+# Default command runs Odoo in test mode
+CMD ["/opt/test-scripts/run-tests.sh"]

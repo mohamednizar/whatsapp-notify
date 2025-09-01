@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: odoo_test
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odoo -d odoo_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  odoo-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=odoo
+      - POSTGRES_DB=odoo_test
+    ports:
+      - "8069:8069"
+    volumes:
+      - ./odoo_module:/mnt/extra-addons/whatsapp_business:ro
+      - ./test/logs:/var/log/odoo
+      - ./test/filestore:/var/lib/odoo/filestore
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # Test runner service that executes the module installation tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      odoo-test:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      - HOST=postgres
+      - USER=odoo
+      - PASSWORD=odoo
+      - POSTGRES_DB=odoo_test
+      - ODOO_URL=http://odoo-test:8069
+    volumes:
+      - ./test/results:/opt/test-results
+      - ./test/logs:/var/log/odoo
+    command: ["/opt/test-scripts/install-module-test.sh"]
+
+volumes:
+  postgres_data:
