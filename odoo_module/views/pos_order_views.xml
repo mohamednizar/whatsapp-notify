@@ -7,44 +7,49 @@
             <field name="model">pos.order</field>
             <field name="inherit_id" ref="point_of_sale.view_pos_order_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//div[@name='button_box']" position="inside">
-                    <!-- WhatsApp Send Receipt Button -->
-                    <button name="action_send_whatsapp_receipt"
-                            type="object"
-                            class="oe_stat_button"
-                            icon="fa-whatsapp"
-                            invisible="not partner_id or not partner_id.mobile and not partner_id.phone">
-                        <div class="o_field_widget o_stat_info">
-                            <span class="o_stat_text">Send Receipt</span>
-                            <span class="o_stat_text">via WhatsApp</span>
-                        </div>
-                    </button>
-                    
-                    <!-- WhatsApp Send E-books Button -->
-                    <button name="action_send_whatsapp_ebooks"
-                            type="object"
-                            class="oe_stat_button"
-                            icon="fa-book"
-                            invisible="not partner_id or not partner_id.mobile and not partner_id.phone">
-                        <div class="o_field_widget o_stat_info">
-                            <span class="o_stat_text">Send E-books</span>
-                            <span class="o_stat_text">via WhatsApp</span>
-                        </div>
-                    </button>
-                    
-                    <!-- WhatsApp Messages Count -->
-                    <button name="%(action_whatsapp_message)d"
-                            type="action"
-                            class="oe_stat_button"
-                            icon="fa-comments"
-                            context="{'default_pos_order_id': active_id}"
-                            invisible="not whatsapp_message_ids">
-                        <field name="whatsapp_message_ids" widget="statinfo" string="WhatsApp Messages"/>
-                    </button>
+                <!-- Add button after the form header -->
+                <xpath expr="//form/header" position="after">
+                    <div class="oe_button_box" name="button_box">
+                        <!-- WhatsApp Send Receipt Button -->
+                        <button name="action_send_whatsapp_receipt"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-whatsapp"
+                                invisible="not can_send_whatsapp">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Send Receipt</span>
+                                <span class="o_stat_text">via WhatsApp</span>
+                            </div>
+                        </button>
+                        
+                        <!-- WhatsApp Send E-books Button -->
+                        <button name="action_send_whatsapp_ebooks"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-book"
+                                invisible="not can_send_whatsapp">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Send E-books</span>
+                                <span class="o_stat_text">via WhatsApp</span>
+                            </div>
+                        </button>
+                        
+                        <!-- WhatsApp Messages Count -->
+                        <button name="%(action_whatsapp_message)d"
+                                type="action"
+                                class="oe_stat_button"
+                                icon="fa-comments"
+                                context="{'default_pos_order_id': active_id, 'search_default_pos_order_id': active_id}"
+                                invisible="not whatsapp_message_ids">
+                            <field name="whatsapp_message_ids" widget="statinfo" string="WhatsApp Messages"/>
+                        </button>
+                    </div>
                 </xpath>
                 
                 <!-- Add WhatsApp fields to form -->
                 <xpath expr="//field[@name='note']" position="after">
+                    <!-- Add invisible field for button visibility -->
+                    <field name="can_send_whatsapp" invisible="1"/>
                     <group string="WhatsApp Information" invisible="not whatsapp_message_ids">
                         <field name="whatsapp_sent" readonly="1"/>
                         <field name="whatsapp_message_ids" nolabel="1">

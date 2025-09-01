@@ -11,6 +11,15 @@ class PosOrder(models.Model):
 
     whatsapp_sent = fields.Boolean(string="WhatsApp Sent", default=False, help="Whether WhatsApp message has been sent for this order")
     whatsapp_message_ids = fields.One2many('whatsapp.message', 'pos_order_id', string="WhatsApp Messages")
+    can_send_whatsapp = fields.Boolean(string="Can Send WhatsApp", compute="_compute_can_send_whatsapp", help="Whether WhatsApp can be sent to this customer")
+
+    @api.depends('partner_id', 'partner_id.mobile', 'partner_id.phone')
+    def _compute_can_send_whatsapp(self):
+        for order in self:
+            order.can_send_whatsapp = (
+                order.partner_id and 
+                (order.partner_id.mobile or order.partner_id.phone)
+            )
 
     def _get_digital_product_links(self):
         """Extract download links for digital products (E-Books) in the POS order"""
