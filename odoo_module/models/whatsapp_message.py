@@ -100,7 +100,8 @@ class WhatsAppMessage(models.Model):
     pos_order_id = fields.Many2one(
         'pos.order',
         string='POS Order',
-        help='Related POS order if message was sent from POS'
+        help='Related POS order if message was sent from POS',
+        ondelete='cascade'
     )
     
     error_message = fields.Text(

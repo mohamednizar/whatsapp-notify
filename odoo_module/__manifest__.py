@@ -42,7 +42,6 @@ Use Cases:
         'base',
         'mail',
         'contacts',
-        'point_of_sale',
     ],
     'data': [
         'security/ir.model.access.csv',
@@ -55,7 +54,6 @@ Use Cases:
         'wizard/whatsapp_send_template_wizard.xml',
         'views/whatsapp_debug_wizard_views.xml',
         'views/res_partner_views.xml',
-        'views/pos_order_views.xml',
         'views/product_template_views.xml',
         'views/menu.xml',
     ],
