@@ -80,6 +80,11 @@ jobs:
 
       - name: Build test image
         run: |
+          # Install Python dependencies in the image before building
+          cat > requirements.txt << EOF
+          requests
+          python-dotenv
+          EOF
           docker build -f Dockerfile.test -t whatsapp-notify-test:latest .
 
       - name: Create Docker network

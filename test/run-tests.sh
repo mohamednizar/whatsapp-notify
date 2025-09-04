@@ -89,8 +89,12 @@ done
 cleanup_test_env() {
     print_header "Cleaning up test environment"
     
-    # Stop and remove containers
-    docker-compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true
+    # Stop and remove containers (try both V1 and V2)
+    if command -v docker-compose &> /dev/null; then
+        docker-compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true
+    else
+        docker compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true
+    fi
     
     # Remove test image
     docker image rm whatsapp-notify-test:latest 2>/dev/null || true
@@ -187,7 +191,8 @@ run_installation_test() {
         return 1
     fi
     
-    if ! command -v docker-compose &> /dev/null; then
+    # Check for Docker Compose (V1 or V2)
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
         print_status $RED "Error: Docker Compose is required but not installed"
         return 1
     fi
@@ -210,10 +215,17 @@ run_installation_test() {
     print_status $YELLOW "Running installation test..."
     
     cd "$PROJECT_ROOT"
+    
+    # Use docker-compose V1 if available, otherwise use docker compose V2
+    local compose_cmd="docker compose"
+    if command -v docker-compose &> /dev/null; then
+        compose_cmd="docker-compose"
+    fi
+    
     if [ "$VERBOSE" = true ]; then
-        docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+        $compose_cmd -f docker-compose.test.yml up --build --abort-on-container-exit
     else
-        docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit > /dev/null 2>&1
+        $compose_cmd -f docker-compose.test.yml up --build --abort-on-container-exit > /dev/null 2>&1
     fi
     
     # Check results
@@ -298,15 +310,26 @@ main() {
     
     local exit_code=$?
     
-    # Cleanup Docker containers
+    # Cleanup Docker containers (try both V1 and V2)
     print_status $YELLOW "Cleaning up Docker containers..."
-    docker-compose -f docker-compose.test.yml down -v 2>/dev/null || true
+    if command -v docker-compose &> /dev/null; then
+        docker-compose -f docker-compose.test.yml down -v 2>/dev/null || true
+    else
+        docker compose -f docker-compose.test.yml down -v 2>/dev/null || true
+    fi
     
     exit $exit_code
 }
 
 # Trap to ensure cleanup on script exit
-trap 'docker-compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true' EXIT
+cleanup_on_exit() {
+    if command -v docker-compose &> /dev/null; then
+        docker-compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true
+    else
+        docker compose -f "$PROJECT_ROOT/docker-compose.test.yml" down -v 2>/dev/null || true
+    fi
+}
+trap cleanup_on_exit EXIT
 
 # Run main function
 main "$@"

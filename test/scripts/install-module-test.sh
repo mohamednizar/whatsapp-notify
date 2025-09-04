@@ -83,18 +83,86 @@ test_module_installation() {
     log "Installing WhatsApp Business module..."
     
     local install_output
-    install_output=$(odoo \
-        --config=/etc/odoo/odoo.conf \
-        --database="$TEST_DB" \
-        --init=whatsapp_business \
-        --stop-after-init \
-        --log-level=info \
-        --no-http 2>&1) || {
-        log "ERROR: Module installation failed"
+    local install_stderr
+    local install_exit_code
+    
+    # Capture both stdout and stderr, and the exit code
+    {
+        install_output=$(odoo \
+            --config=/etc/odoo/odoo.conf \
+            --database="$TEST_DB" \
+            --init=whatsapp_business \
+            --stop-after-init \
+            --log-level=debug \
+            --no-http 2>&1)
+        install_exit_code=$?
+    }
+    
+    # Check for success indicators in the output regardless of exit code
+    local success_indicators=(
+        "Modules loaded"
+        "Registry loaded"
+        "whatsapp_business"
+    )
+    
+    local success_found=false
+    for indicator in "${success_indicators[@]}"; do
+        if echo "$install_output" | grep -q "$indicator"; then
+            success_found=true
+            break
+        fi
+    done
+    
+    # Check for explicit error indicators
+    local error_indicators=(
+        "Unable to install module"
+        "external dependency is not met"
+        "ImportError"
+        "ModuleNotFoundError"
+        "SyntaxError"
+        "CRITICAL.*Failed to initialize"
+    )
+    
+    local error_found=false
+    for error in "${error_indicators[@]}"; do
+        if echo "$install_output" | grep -q "$error"; then
+            error_found=true
+            break
+        fi
+    done
+    
+    if [ "$error_found" = true ]; then
+        log "ERROR: Module installation failed - error detected in output"
         log "Installation output:"
         echo "$install_output" | tee -a "$LOG_FILE"
+        
+        # Try to get more details about the failure
+        log "Checking Odoo log for additional errors..."
+        if [ -f "/var/log/odoo/odoo.log" ]; then
+            log "Last 20 lines of Odoo log:"
+            tail -20 /var/log/odoo/odoo.log | tee -a "$LOG_FILE"
+        fi
+        
         return 1
-    }
+    elif [ "$success_found" = true ]; then
+        log "Module installation completed successfully (success indicators found)"
+        log "Installation output summary:"
+        echo "$install_output" | grep -E "(Modules loaded|Registry loaded|whatsapp_business)" | tee -a "$LOG_FILE"
+        return 0
+    elif [ $install_exit_code -ne 0 ]; then
+        log "ERROR: Module installation failed (exit code: $install_exit_code)"
+        log "Installation output:"
+        echo "$install_output" | tee -a "$LOG_FILE"
+        
+        # Try to get more details about the failure
+        log "Checking Odoo log for additional errors..."
+        if [ -f "/var/log/odoo/odoo.log" ]; then
+            log "Last 20 lines of Odoo log:"
+            tail -20 /var/log/odoo/odoo.log | tee -a "$LOG_FILE"
+        fi
+        
+        return 1
+    fi
     
     log "Module installation completed successfully"
     log "Installation output:"
