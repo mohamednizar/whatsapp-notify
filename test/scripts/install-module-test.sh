@@ -70,8 +70,11 @@ test_module_installation() {
     
     # Test database connection
     log "Testing database connection..."
+    # Set PGPASSWORD for psql authentication
+    export PGPASSWORD=${PASSWORD:-odoo}
     if ! psql -h ${HOST:-postgres} -p ${DB_PORT:-5432} -U ${USER:-odoo} -d ${POSTGRES_DB:-odoo_test} -c "SELECT 1;" > /dev/null 2>&1; then
         log "ERROR: Could not connect to database"
+        log "Debug info: HOST=${HOST:-postgres}, USER=${USER:-odoo}, POSTGRES_DB=${POSTGRES_DB:-odoo_test}, PASSWORD_SET=${PASSWORD:+yes}"
         return 1
     fi
     log "Database connection successful"
