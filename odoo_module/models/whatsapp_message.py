@@ -9,6 +9,14 @@ from datetime import datetime
 
 _logger = logging.getLogger(__name__)
 
+# Check if POS module is available
+try:
+    from odoo.addons.point_of_sale.models.pos_order import PosOrder
+    POS_AVAILABLE = True
+except ImportError:
+    POS_AVAILABLE = False
+    _logger.info("Point of Sale module not available - POS integration fields will be skipped")
+
 MESSAGE_STATES = [
     ('draft', 'Draft'),
     ('sending', 'Sending'),
@@ -95,13 +103,6 @@ class WhatsAppMessage(models.Model):
         'whatsapp.config',
         string='Configuration Used',
         help='WhatsApp configuration used to send this message'
-    )
-    
-    pos_order_id = fields.Many2one(
-        'pos.order',
-        string='POS Order',
-        help='Related POS order if message was sent from POS',
-        ondelete='cascade'
     )
     
     error_message = fields.Text(
@@ -704,3 +705,13 @@ class WhatsAppMessage(models.Model):
             'view_id': self.env.ref('whatsapp_notify.view_whatsapp_message_form').id,
             'target': 'current',
         }
+
+# Conditionally add POS integration fields if POS module is available
+if POS_AVAILABLE:
+    # Add pos_order_id field to WhatsAppMessage model dynamically
+    WhatsAppMessage.pos_order_id = fields.Many2one(
+        'pos.order',
+        string='POS Order',
+        help='Related POS order if message was sent from POS',
+        ondelete='cascade'
+    )

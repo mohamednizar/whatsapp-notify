@@ -169,7 +169,6 @@
                     <field name="subject"/>
                     <field name="partner_id"/>
                     <field name="phone_number"/>
-                    <field name="pos_order_id"/>
                     <field name="content"/>
                     <field name="provider_message_id"/>
                     
@@ -198,10 +197,6 @@
                     <filter name="template_messages" string="Template Messages" domain="[('message_type', '=', 'template')]"/>
                     <filter name="receipt_messages" string="Receipts" domain="[('message_type', '=', 'receipt')]"/>
                     <filter name="ebook_messages" string="E-books" domain="[('message_type', '=', 'ebook')]"/>
-                    <separator/>
-                    
-                    <!-- POS Filters -->
-                    <filter name="pos_orders" string="POS Orders" domain="[('pos_order_id', '!=', False)]"/>
                     <separator/>
                     
                     <!-- Retry Filters -->
