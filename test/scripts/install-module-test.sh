@@ -15,12 +15,39 @@ TEST_DB=${POSTGRES_DB:-"odoo_test"}
 RESULTS_DIR="/opt/test-results"
 LOG_FILE="$RESULTS_DIR/installation-test.log"
 
-# Create results directory
-mkdir -p "$RESULTS_DIR"
+# Create results directory with proper permissions
+if [ ! -d "$RESULTS_DIR" ]; then
+    if [ "$(id -u)" = "0" ]; then
+        # Running as root, create directory and change ownership
+        mkdir -p "$RESULTS_DIR"
+        chown odoo:odoo "$RESULTS_DIR"
+    else
+        # Running as odoo user, try to create directory
+        mkdir -p "$RESULTS_DIR" 2>/dev/null || {
+            echo "Warning: Could not create $RESULTS_DIR, using /tmp instead"
+            RESULTS_DIR="/tmp/test-results"
+            LOG_FILE="$RESULTS_DIR/installation-test.log" 
+            mkdir -p "$RESULTS_DIR"
+        }
+    fi
+fi
+
+# Test if we can write to the log file
+if ! touch "$LOG_FILE" 2>/dev/null; then
+    echo "Warning: Cannot write to $LOG_FILE, using /tmp"
+    RESULTS_DIR="/tmp/test-results"
+    LOG_FILE="$RESULTS_DIR/installation-test.log"
+    mkdir -p "$RESULTS_DIR"
+fi
 
 # Function to log with timestamp
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$message"
+    # Try to append to log file, if it fails just continue
+    if [ -w "$LOG_FILE" ] || [ -w "$(dirname "$LOG_FILE")" ]; then
+        echo "$message" >> "$LOG_FILE" 2>/dev/null || true
+    fi
 }
 
 # Function to check if Odoo is ready
@@ -86,15 +113,44 @@ test_module_installation() {
     local install_stderr
     local install_exit_code
     
+    # First, ensure the database exists and is accessible
+    log "Creating or ensuring test database exists..."
+    if ! createdb -h ${HOST:-postgres} -p ${DB_PORT:-5432} -U ${USER:-odoo} "$TEST_DB" 2>/dev/null; then
+        log "Database $TEST_DB may already exist, continuing..."
+    fi
+    
+    # Create a temporary Odoo config for this test
+    local temp_config="/tmp/test_odoo.conf"
+    cat > "$temp_config" << EOF
+[options]
+addons_path = /mnt/extra-addons,/usr/lib/python3/dist-packages/odoo/addons
+data_dir = /var/lib/odoo
+logfile = False
+log_level = info
+db_host = ${HOST:-postgres}
+db_port = ${DB_PORT:-5432}
+db_user = ${USER:-odoo}
+db_password = ${PASSWORD:-odoo}
+db_name = ${TEST_DB}
+http_port = 8069
+workers = 0
+test_enable = False
+without_demo = False
+admin_passwd = admin
+list_db = True
+max_cron_threads = 0
+EOF
+
     # Capture both stdout and stderr, and the exit code
     {
         install_output=$(odoo \
-            --config=/etc/odoo/odoo.conf \
+            --config="$temp_config" \
             --database="$TEST_DB" \
             --init=whatsapp_business \
             --stop-after-init \
-            --log-level=debug \
-            --no-http 2>&1)
+            --log-level=info \
+            --no-http \
+            --db-filter="$TEST_DB" 2>&1)
         install_exit_code=$?
     }
     
@@ -102,12 +158,14 @@ test_module_installation() {
     local success_indicators=(
         "Modules loaded"
         "Registry loaded"
-        "whatsapp_business"
+        "whatsapp_business loaded"
+        "loading whatsapp_business"
     )
     
     local success_found=false
     for indicator in "${success_indicators[@]}"; do
         if echo "$install_output" | grep -q "$indicator"; then
+            log "Found success indicator: $indicator"
             success_found=true
             break
         fi
@@ -196,6 +254,40 @@ test_module_upgrade() {
     return 0
 }
 
+# Function to check Python dependencies
+check_python_dependencies() {
+    log "Checking external Python dependencies..."
+    
+    local dependencies=("requests" "python-dotenv")
+    local missing_deps=()
+    
+    for dep in "${dependencies[@]}"; do
+        if python3 -c "import ${dep//-/_}" 2>/dev/null; then
+            log "✓ Python dependency available: $dep"
+        else
+            log "❌ Python dependency missing: $dep"
+            missing_deps+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log "Missing dependencies: ${missing_deps[*]}"
+        log "Attempting to install missing dependencies..."
+        for dep in "${missing_deps[@]}"; do
+            log "Installing $dep..."
+            if pip3 install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org "$dep" 2>&1 | tee -a "$LOG_FILE"; then
+                log "✓ Successfully installed $dep"
+            else
+                log "❌ Failed to install $dep"
+                return 1
+            fi
+        done
+    fi
+    
+    log "Python dependencies check completed"
+    return 0
+}
+
 # Function to validate module structure
 validate_module_structure() {
     log "Validating module structure..."
@@ -267,6 +359,16 @@ run_comprehensive_tests() {
     
     local tests_passed=0
     local tests_failed=0
+    
+    # Test 0: Python dependencies check
+    log "=== Test 0: Python Dependencies Check ==="
+    if check_python_dependencies; then
+        log "✅ PASS: Python dependencies check"
+        tests_passed=$((tests_passed + 1))
+    else
+        log "❌ FAIL: Python dependencies check"
+        tests_failed=$((tests_failed + 1))
+    fi
     
     # Test 1: Module structure validation
     log "=== Test 1: Module Structure Validation ==="
@@ -344,17 +446,42 @@ run_comprehensive_tests() {
 main() {
     log "Starting WhatsApp Business module test suite..."
     log "Environment: HOST=${HOST:-postgres}, USER=${USER:-odoo}, DB=${POSTGRES_DB:-odoo_test}"
+    log "Current user: $(whoami), UID: $(id -u), Groups: $(groups)"
     
-    # Install required tools if not present
-    if ! command -v xmllint &> /dev/null; then
-        log "Installing xmllint..."
-        apt-get update && apt-get install -y libxml2-utils
-    fi
-    
-    # Install psql if not present (for database connectivity tests)
-    if ! command -v psql &> /dev/null; then
-        log "Installing PostgreSQL client..."
-        apt-get update && apt-get install -y postgresql-client
+    # Install required tools if not present and running as root
+    if [ "$(id -u)" = "0" ]; then
+        log "Running as root, installing required tools if needed..."
+        
+        if ! command -v xmllint &> /dev/null; then
+            log "Installing xmllint..."
+            apt-get update && apt-get install -y libxml2-utils
+        fi
+        
+        # Install psql if not present (for database connectivity tests)
+        if ! command -v psql &> /dev/null; then
+            log "Installing PostgreSQL client..."
+            apt-get update && apt-get install -y postgresql-client
+        fi
+        
+        # Install createdb if not present
+        if ! command -v createdb &> /dev/null; then
+            log "Installing PostgreSQL client tools..."
+            apt-get update && apt-get install -y postgresql-client
+        fi
+    else
+        log "Running as non-root user, checking available tools..."
+        
+        if ! command -v xmllint &> /dev/null; then
+            log "Warning: xmllint not available"
+        fi
+        
+        if ! command -v psql &> /dev/null; then
+            log "Warning: psql not available"
+        fi
+        
+        if ! command -v createdb &> /dev/null; then
+            log "Warning: createdb not available"
+        fi
     fi
     
     # Run comprehensive tests

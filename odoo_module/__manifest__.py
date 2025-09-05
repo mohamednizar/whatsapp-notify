@@ -42,11 +42,13 @@ Use Cases:
         'base',
         'mail',
         'contacts',
+        'product',
     ],
     'data': [
         'security/ir.model.access.csv',
         'security/whatsapp_security.xml',
         'data/whatsapp_templates.xml',
+        'views/menu.xml',
         'views/whatsapp_config_views.xml',
         'views/whatsapp_message_views.xml',
         'views/whatsapp_template_views.xml',
@@ -55,7 +57,6 @@ Use Cases:
         'views/whatsapp_debug_wizard_views.xml',
         'views/res_partner_views.xml',
         'views/product_template_views.xml',
-        'views/menu.xml',
     ],
     'demo': [
         'demo/whatsapp_demo.xml',

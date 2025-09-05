@@ -110,6 +110,11 @@ class WhatsAppMessage(models.Model):
         help='Error details if message failed'
     )
     
+    note = fields.Text(
+        string='Notes',
+        help='Additional notes or references (e.g., POS Order reference)'
+    )
+    
     sent_date = fields.Datetime(
         string='Sent Date',
         help='When the message was sent'
@@ -707,11 +712,13 @@ class WhatsAppMessage(models.Model):
         }
 
 # Conditionally add POS integration fields if POS module is available
-if POS_AVAILABLE:
-    # Add pos_order_id field to WhatsAppMessage model dynamically
-    WhatsAppMessage.pos_order_id = fields.Many2one(
-        'pos.order',
-        string='POS Order',
-        help='Related POS order if message was sent from POS',
-        ondelete='cascade'
-    )
+# Note: This is commented out to avoid registry errors when POS module is not available
+# The POS integration will be handled through the pos_order.py model instead
+# if POS_AVAILABLE:
+#     # Add pos_order_id field to WhatsAppMessage model dynamically
+#     WhatsAppMessage.pos_order_id = fields.Many2one(
+#         'pos.order',
+#         string='POS Order',
+#         help='Related POS order if message was sent from POS',
+#         ondelete='cascade'
+#     )

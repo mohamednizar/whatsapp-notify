@@ -38,11 +38,11 @@ RUN chown -R odoo:odoo /mnt/extra-addons
 COPY test/odoo.conf /etc/odoo/odoo.conf
 RUN chown odoo:odoo /etc/odoo/odoo.conf
 
-# Create test scripts directory
-RUN mkdir -p /opt/test-scripts
+# Create test directories with proper permissions
+RUN mkdir -p /opt/test-scripts /opt/test-results
 COPY test/scripts/ /opt/test-scripts/
 RUN chmod +x /opt/test-scripts/*.sh
-RUN chown -R odoo:odoo /opt/test-scripts
+RUN chown -R odoo:odoo /opt/test-scripts /opt/test-results
 
 # Switch back to odoo user
 USER odoo

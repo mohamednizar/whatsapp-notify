@@ -113,11 +113,12 @@
             </field>
         </record>
 
+        <!-- Create our own menu item under the main WhatsApp menu -->
         <menuitem id="menu_product_template_digital"
                   name="Digital Products"
-                  parent="sale.prod_config_main"
+                  parent="menu_whatsapp_main"
                   action="action_product_template_digital"
-                  sequence="20"/>
+                  sequence="30"/>
 
     </data>
 </odoo>
