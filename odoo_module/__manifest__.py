@@ -18,6 +18,8 @@ Features:
 * Configuration management for multiple providers
 * Wizard interfaces for easy message sending
 * Integration with Odoo contacts and partners
+* POS integration for e-books and receipt delivery
+* Digital product management with automatic WhatsApp delivery
 
 Supported Providers:
 ------------------
@@ -31,6 +33,7 @@ Use Cases:
 * Marketing messages with templates
 * Document delivery (invoices, reports, etc.)
 * Customer support communications
+* POS receipt and e-book delivery via WhatsApp
     """,
     'author': 'ht2cloud',
     'website': 'https://github.com/ht2cloud/whatsapp-notify',
@@ -39,18 +42,21 @@ Use Cases:
         'base',
         'mail',
         'contacts',
+        'product',
     ],
     'data': [
         'security/ir.model.access.csv',
         'security/whatsapp_security.xml',
         'data/whatsapp_templates.xml',
+        'views/menu.xml',
         'views/whatsapp_config_views.xml',
         'views/whatsapp_message_views.xml',
         'views/whatsapp_template_views.xml',
         'wizard/whatsapp_send_message_wizard.xml',
         'wizard/whatsapp_send_template_wizard.xml',
+        'views/whatsapp_debug_wizard_views.xml',
         'views/res_partner_views.xml',
-        'views/menu.xml',
+        'views/product_template_views.xml',
     ],
     'demo': [
         'demo/whatsapp_demo.xml',

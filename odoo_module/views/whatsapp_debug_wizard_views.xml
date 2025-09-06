@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- WhatsApp Debug Test Wizard -->
+        <record id="view_whatsapp_debug_test_wizard" model="ir.ui.view">
+            <field name="name">whatsapp.debug.test.wizard.form</field>
+            <field name="model">whatsapp.debug.test.wizard</field>
+            <field name="arch" type="xml">
+                <form string="WhatsApp Debug Test">
+                    <div class="alert alert-info" role="alert">
+                        <strong>🔍 WhatsApp Delivery Debug Test</strong><br/>
+                        This tool will run a comprehensive test to debug why WhatsApp messages might not be delivered.
+                        It will validate your configuration, test connectivity, validate the phone number, 
+                        and send a test message with detailed logging.
+                    </div>
+                    
+                    <group>
+                        <field name="config_id" readonly="1"/>
+                        <field name="phone_number" placeholder="+1234567890"/>
+                        <field name="test_message" widget="text"/>
+                    </group>
+                    
+                    <div class="alert alert-warning" role="alert">
+                        <strong>⚠️  Important Notes:</strong><br/>
+                        • A test message will actually be sent to the provided number<br/>
+                        • Ensure the number is valid and you have permission to send messages<br/>
+                        • Check the created message record for detailed debugging information<br/>
+                        • This may consume API credits depending on your provider
+                    </div>
+                    
+                    <footer>
+                        <button name="action_run_debug_test" type="object" string="🧪 Run Debug Test" class="btn-primary"/>
+                        <button string="Cancel" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </form>
+            </field>
+        </record>
+        
+    </data>
+</odoo>

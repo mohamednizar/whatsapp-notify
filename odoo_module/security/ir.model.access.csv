@@ -4,3 +4,4 @@ access_whatsapp_message_user,whatsapp.message.user,model_whatsapp_message,base.g
 access_whatsapp_template_user,whatsapp.template.user,model_whatsapp_template,base.group_user,1,1,1,1
 access_whatsapp_send_message_wizard_user,whatsapp.send.message.wizard.user,model_whatsapp_send_message_wizard,base.group_user,1,1,1,1
 access_whatsapp_send_template_wizard_user,whatsapp.send.template.wizard.user,model_whatsapp_send_template_wizard,base.group_user,1,1,1,1
+access_whatsapp_debug_test_wizard_user,whatsapp.debug.test.wizard.user,model_whatsapp_debug_test_wizard,base.group_user,1,1,1,1

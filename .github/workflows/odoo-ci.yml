@@ -1,0 +1,278 @@
+name: Odoo Module CI/CD Tests
+
+on:
+  push:
+    branches: [ main, develop, 'copilot/**' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - syntax
+        - install
+        - upgrade
+
+jobs:
+  lint-and-syntax:
+    name: Lint and Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pylint requests python-dotenv
+
+      - name: Lint Python files
+        run: |
+          echo "Running flake8 linting..."
+          flake8 odoo_module/ --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          echo "Running pylint analysis..."
+          find odoo_module/ -name "*.py" | xargs pylint --disable=all --enable=E,W --output-format=text || true
+
+      - name: Check XML syntax
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxml2-utils
+          echo "Checking XML syntax..."
+          find odoo_module/ -name "*.xml" -exec xmllint --noout {} \; && echo "All XML files are valid"
+
+      - name: Python syntax check
+        run: |
+          echo "Checking Python syntax..."
+          find odoo_module/ -name "*.py" -exec python -m py_compile {} \; && echo "All Python files are syntactically correct"
+
+  odoo-module-test:
+    name: Odoo Module Installation Test
+    runs-on: ubuntu-latest
+    needs: lint-and-syntax
+    strategy:
+      matrix:
+        odoo_version: ['17.0']
+        test_type: 
+          - install
+          - upgrade
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create test directories
+        run: |
+          mkdir -p test/{logs,results,filestore}
+          chmod 777 test/{logs,results,filestore}
+
+      - name: Build test image
+        run: |
+          # Install Python dependencies in the image before building
+          cat > requirements.txt << EOF
+          requests
+          python-dotenv
+          EOF
+          docker build -f Dockerfile.test -t whatsapp-notify-test:latest .
+
+      - name: Create Docker network
+        run: |
+          docker network create odoo-test-network
+
+      - name: Run PostgreSQL container
+        run: |
+          docker run -d \
+            --name postgres-test \
+            --network odoo-test-network \
+            --network-alias postgres \
+            -e POSTGRES_DB=odoo_test \
+            -e POSTGRES_USER=odoo \
+            -e POSTGRES_PASSWORD=odoo \
+            -e LC_ALL=C.UTF-8 \
+            -e LANG=C.UTF-8 \
+            -p 5432:5432 \
+            postgres:15
+
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          timeout=60
+          count=0
+          while [ $count -lt $timeout ]; do
+            if docker exec postgres-test pg_isready -U odoo -d odoo_test -h localhost; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "PostgreSQL not ready yet... waiting (attempt $((count+1))/$timeout)"
+            sleep 2
+            count=$((count+1))
+          done
+          
+          if [ $count -eq $timeout ]; then
+            echo "PostgreSQL failed to start within timeout"
+            docker logs postgres-test
+            exit 1
+          fi
+
+      - name: Test Module Installation
+        id: test_install
+        run: |
+          set +e  # Don't exit on error, we want to capture the result
+          
+          # Run the installation test
+          docker run --rm \
+            --network odoo-test-network \
+            -e HOST=postgres \
+            -e USER=odoo \
+            -e PASSWORD=odoo \
+            -e POSTGRES_DB=odoo_test \
+            -e LC_ALL=C.UTF-8 \
+            -e LANG=C.UTF-8 \
+            -v $(pwd)/test/results:/opt/test-results \
+            -v $(pwd)/test/logs:/var/log/odoo \
+            whatsapp-notify-test:latest \
+            /opt/test-scripts/install-module-test.sh
+          
+          test_result=$?
+          
+          # Check test status
+          if [ -f test/results/test-status.txt ]; then
+            status=$(cat test/results/test-status.txt)
+            echo "Test status: $status"
+            if [ "$status" = "SUCCESS" ]; then
+              echo "✅ Module installation test PASSED"
+              exit 0
+            else
+              echo "❌ Module installation test FAILED"
+              exit 1
+            fi
+          else
+            echo "❌ Test status file not found"
+            exit 1
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.odoo_version }}-${{ matrix.test_type }}
+          path: |
+            test/results/
+            test/logs/
+
+      - name: Display test logs on failure
+        if: failure()
+        run: |
+          echo "=== Installation Test Log ==="
+          if [ -f test/results/installation-test.log ]; then
+            cat test/results/installation-test.log
+          fi
+          echo "=== Odoo Logs ==="
+          if [ -f test/logs/odoo.log ]; then
+            tail -100 test/logs/odoo.log
+          fi
+
+      - name: Clean up containers
+        if: always()
+        run: |
+          docker stop postgres-test || true
+          docker rm postgres-test || true
+          docker network rm odoo-test-network || true
+
+  integration-test:
+    name: Full Integration Test
+    runs-on: ubuntu-latest
+    needs: [lint-and-syntax, odoo-module-test]
+    if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == '' || contains(github.event_name, 'push')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create test directories
+        run: |
+          mkdir -p test/{logs,results,filestore}
+          chmod 777 test/{logs,results,filestore}
+
+      - name: Run full integration test with Docker Compose
+        run: |
+          # Start the test environment with timeout
+          timeout 600 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-runner
+          
+          # Check exit code
+          test_exit_code=$?
+          
+          if [ $test_exit_code -eq 0 ]; then
+            echo "✅ Integration tests completed successfully"
+          elif [ $test_exit_code -eq 124 ]; then
+            echo "❌ Integration tests timed out after 10 minutes"
+            exit 1
+          else
+            echo "❌ Integration tests failed with exit code: $test_exit_code"
+            exit 1
+          fi
+          
+          # Check if tests passed
+          if [ -f test/results/test-status.txt ]; then
+            status=$(cat test/results/test-status.txt)
+            echo "Integration test status: $status"
+            if [ "$status" != "SUCCESS" ]; then
+              echo "❌ Integration tests failed"
+              exit 1
+            fi
+          else
+            echo "❌ Integration test status file not found"
+            exit 1
+          fi
+
+      - name: Upload integration test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: |
+            test/results/
+            test/logs/
+
+      - name: Clean up
+        if: always()
+        run: |
+          docker compose -f docker-compose.test.yml down -v
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [lint-and-syntax, odoo-module-test, integration-test]
+    if: always()
+    
+    steps:
+      - name: Check test results
+        run: |
+          echo "=== TEST SUMMARY ==="
+          echo "Lint and Syntax: ${{ needs.lint-and-syntax.result }}"
+          echo "Module Test: ${{ needs.odoo-module-test.result }}"
+          echo "Integration Test: ${{ needs.integration-test.result }}"
+          
+          if [ "${{ needs.lint-and-syntax.result }}" = "success" ] && \
+             [ "${{ needs.odoo-module-test.result }}" = "success" ] && \
+             [ "${{ needs.integration-test.result }}" = "success" ]; then
+            echo "🎉 All tests passed successfully!"
+          else
+            echo "❌ Some tests failed. Please check the individual job results."
+            exit 1
+          fi

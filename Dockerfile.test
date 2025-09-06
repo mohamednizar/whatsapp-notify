@@ -1,0 +1,58 @@
+# Dockerfile for Odoo Module Testing
+FROM odoo:17.0
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ODOO_RC=/etc/odoo/odoo.conf
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
+ENV LANGUAGE=en_US:en
+
+# Install additional system dependencies
+USER root
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    git \
+    curl \
+    postgresql-client \
+    libxml2-utils \
+    locales \
+    && locale-gen en_US.UTF-8 \
+    && update-locale LANG=en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies for the WhatsApp module
+RUN pip3 install --no-cache-dir --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org \
+    requests \
+    python-dotenv || \
+    pip3 install --no-cache-dir --break-system-packages \
+    requests \
+    python-dotenv || true
+
+# Create addons directory and set permissions
+RUN mkdir -p /mnt/extra-addons/whatsapp_business
+COPY odoo_module/ /mnt/extra-addons/whatsapp_business/
+RUN chown -R odoo:odoo /mnt/extra-addons
+
+# Create test configuration
+COPY test/odoo.conf /etc/odoo/odoo.conf
+RUN chown odoo:odoo /etc/odoo/odoo.conf
+
+# Create test directories with proper permissions
+RUN mkdir -p /opt/test-scripts /opt/test-results
+COPY test/scripts/ /opt/test-scripts/
+RUN chmod +x /opt/test-scripts/*.sh
+RUN chown -R odoo:odoo /opt/test-scripts /opt/test-results
+
+# Switch back to odoo user
+USER odoo
+
+# Expose Odoo port
+EXPOSE 8069
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8069/web/health || exit 1
+
+# Default command runs Odoo in test mode
+CMD ["/opt/test-scripts/run-tests.sh"]

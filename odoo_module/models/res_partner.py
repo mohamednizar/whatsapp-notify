@@ -18,11 +18,23 @@ class ResPartner(models.Model):
         compute='_compute_whatsapp_message_count'
     )
     
+    has_whatsapp = fields.Boolean(
+        string='Has WhatsApp',
+        compute='_compute_has_whatsapp',
+        help='Indicates if this contact has WhatsApp capability (has mobile number)'
+    )
+    
     @api.depends('whatsapp_message_ids')
     def _compute_whatsapp_message_count(self):
         """Compute the count of WhatsApp messages"""
         for partner in self:
             partner.whatsapp_message_count = len(partner.whatsapp_message_ids)
+    
+    @api.depends('mobile')
+    def _compute_has_whatsapp(self):
+        """Compute if partner has WhatsApp capability"""
+        for partner in self:
+            partner.has_whatsapp = bool(partner.mobile)
     
     def action_send_whatsapp_message(self):
         """Open wizard to send WhatsApp message to this partner"""

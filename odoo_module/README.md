@@ -92,8 +92,50 @@ pip install requests python-dotenv
 
 ### Viewing Message History
 - **WhatsApp → Messages → All Messages**: View all sent messages
+- **WhatsApp → Messages → WhatsApp Logs**: Detailed logs with delivery status and failure analysis
 - Filter by status, message type, or date
 - Retry failed messages
+
+## WhatsApp Logs Feature
+
+The **WhatsApp Logs** page provides comprehensive message tracking and debugging capabilities:
+
+### 🔍 **Detailed Logging**
+- **API Request/Response**: Complete API call logs for debugging
+- **Delivery Status**: Real-time tracking of message delivery (pending/delivered/failed)
+- **Failure Analysis**: Specific reasons for failed messages with actionable insights
+- **Retry Tracking**: Monitor retry attempts and success rates
+
+### 📊 **Status Monitoring**
+- **Success vs. Failure Rates**: Monitor delivery success across all messages
+- **Provider Performance**: Compare performance between Twilio and Meta APIs
+- **Error Pattern Analysis**: Identify common failure patterns
+
+### 🔧 **Troubleshooting Tools**
+- **One-Click Retry**: Easy retry for failed messages (up to 3 attempts)
+- **Detailed Error Reasons**: Human-readable explanations for failures
+- **API Status Codes**: HTTP status codes for technical debugging
+- **Request Data**: View exact data sent to WhatsApp APIs
+
+### 📋 **Failure Reasons**
+The system categorizes failures into specific types:
+
+- **Invalid Phone Number**: Malformed or incorrect phone numbers
+- **Not on WhatsApp**: Phone number not registered with WhatsApp
+- **Blocked Contact**: Contact has blocked your WhatsApp Business number
+- **API Rate Limit**: Too many requests sent to provider
+- **Template Rejected**: Message template was rejected by WhatsApp
+- **Media Upload Failed**: File attachment upload or processing failed
+- **Network Error**: Connection issues with WhatsApp API
+- **Authentication Error**: Invalid API credentials
+- **Configuration Error**: Missing or invalid WhatsApp configuration
+- **Provider Service Error**: WhatsApp provider service temporarily unavailable
+
+### 🔄 **Auto-Retry Logic**
+- Messages can be retried up to 3 times
+- Retry count and dates are tracked
+- Failed messages show clear retry options
+- Success notifications now mention checking logs for delivery status
 
 ## Template Examples
 
@@ -157,15 +199,23 @@ export META_PHONE_NUMBER_ID=your_phone_number_id
 
 ### Common Issues
 
-1. **Messages not sending**
+1. **Getting success notification but message not delivered**
+   - Check **WhatsApp → Messages → WhatsApp Logs** for detailed delivery status
+   - Look for delivery status: "pending" means sent to API but not yet delivered
+   - Check failure reasons for specific issues (blocked contact, invalid number, etc.)
+   - Use the retry function for failed messages
+
+2. **Messages not sending**
    - Check provider configuration
    - Verify credentials using "Test Connection"
    - Ensure phone numbers include country code (e.g., +1234567890)
+   - Review API request/response logs in WhatsApp Logs
 
-2. **File attachments failing**
+3. **File attachments failing**
    - Meta API: Files are uploaded directly to Meta
    - Twilio: Requires publicly accessible file URLs (not yet implemented)
    - Check file size limits (usually 16MB for Meta)
+   - Review error details in WhatsApp Logs for specific failure reasons
 
 3. **Template variables not working**
    - Ensure template variables are valid JSON

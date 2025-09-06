@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Product Template Form View Enhancement for Digital Products -->
+        <record id="view_product_template_form_digital" model="ir.ui.view">
+            <field name="name">product.template.form.digital</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='general_information']" position="after">
+                    <page string="Digital Product" name="digital_product">
+                        <group>
+                            <group string="Digital Product Settings">
+                                <field name="is_digital_product"/>
+                                <field name="digital_download_link" 
+                                       invisible="not is_digital_product"
+                                       placeholder="https://example.com/download/product"/>
+                                <label for="digital_download_links" invisible="not is_digital_product"/>
+                                <div invisible="not is_digital_product">
+                                    <field name="digital_download_links" 
+                                           nolabel="1"
+                                           placeholder='["https://link1.com", "https://link2.com"]'/>
+                                    <div class="text-muted">
+                                        <small>Multiple download links in JSON format (optional)</small>
+                                    </div>
+                                </div>
+                            </group>
+                        </group>
+                        <group string="Instructions" invisible="not is_digital_product">
+                            <div class="alert alert-info" role="alert">
+                                <strong>Digital Product Setup:</strong>
+                                <ul>
+                                    <li>Check "Is Digital Product" to enable e-book functionality</li>
+                                    <li>Add a single download link in "Download Link" field</li>
+                                    <li>Or add multiple links in JSON format: ["https://link1.com", "https://link2.com"]</li>
+                                    <li>These links will be automatically sent via WhatsApp when the product is sold through POS</li>
+                                </ul>
+                            </div>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Product Product Form View Enhancement -->
+        <record id="view_product_product_form_digital" model="ir.ui.view">
+            <field name="name">product.product.form.digital</field>
+            <field name="model">product.product</field>
+            <field name="inherit_id" ref="product.product_normal_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='general_information']" position="after">
+                    <page string="Digital Product" name="digital_product">
+                        <group>
+                            <group string="Digital Product Settings">
+                                <field name="is_digital_product"/>
+                                <field name="digital_download_link" 
+                                       invisible="not is_digital_product"
+                                       placeholder="https://example.com/download/product"/>
+                                <label for="digital_download_links" invisible="not is_digital_product"/>
+                                <div invisible="not is_digital_product">
+                                    <field name="digital_download_links" 
+                                           nolabel="1"
+                                           placeholder='["https://link1.com", "https://link2.com"]'/>
+                                    <div class="text-muted">
+                                        <small>Multiple download links in JSON format (optional)</small>
+                                    </div>
+                                </div>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Product Template Tree View Enhancement -->
+        <record id="view_product_template_tree_digital" model="ir.ui.view">
+            <field name="name">product.template.tree.digital</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_tree_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='default_code']" position="after">
+                    <field name="is_digital_product" widget="boolean_toggle"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Digital Products Filter -->
+        <record id="product_template_search_digital" model="ir.ui.view">
+            <field name="name">product.template.search.digital</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_search_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//filter[@name='filter_to_purchase']" position="after">
+                    <filter string="Digital Products" name="filter_digital" domain="[('is_digital_product', '=', True)]"/>
+                </xpath>
+            </field>
+        </record>
+
+        <!-- Digital Products Action -->
+        <record id="action_product_template_digital" model="ir.actions.act_window">
+            <field name="name">Digital Products</field>
+            <field name="res_model">product.template</field>
+            <field name="view_mode">tree,form</field>
+            <field name="domain">[('is_digital_product', '=', True)]</field>
+            <field name="context">{'search_default_filter_digital': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create your first digital product!
+                </p>
+                <p>
+                    Digital products (e-books, software, etc.) can be automatically delivered via WhatsApp after POS sales.
+                </p>
+            </field>
+        </record>
+
+        <!-- Create our own menu item under the main WhatsApp menu -->
+        <menuitem id="menu_product_template_digital"
+                  name="Digital Products"
+                  parent="menu_whatsapp_main"
+                  action="action_product_template_digital"
+                  sequence="30"/>
+
+    </data>
+</odoo>
