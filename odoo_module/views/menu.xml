@@ -16,7 +16,7 @@
         <!-- Providers -->
         <record id="action_whatsapp_config" model="ir.actions.act_window">
             <field name="name">Providers</field>
-            <field name="res_model">whatsapp.provider</field>
+            <field name="res_model">whatsapp.config</field>
             <field name="view_mode">tree,form</field>
         </record>
         <menuitem id="menu_whatsapp_config_providers"
