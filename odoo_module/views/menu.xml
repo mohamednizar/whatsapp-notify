@@ -13,12 +13,24 @@
                   parent="menu_whatsapp_main"
                   sequence="10"/>
         
+        <!-- Providers -->
+        <record id="action_whatsapp_config" model="ir.actions.act_window">
+            <field name="name">Providers</field>
+            <field name="res_model">whatsapp.provider</field>
+            <field name="view_mode">tree,form</field>
+        </record>
         <menuitem id="menu_whatsapp_config_providers"
                   name="Providers"
                   parent="menu_whatsapp_config"
                   action="action_whatsapp_config"
                   sequence="10"/>
         
+        <!-- Templates -->
+        <record id="action_whatsapp_template" model="ir.actions.act_window">
+            <field name="name">Templates</field>
+            <field name="res_model">whatsapp.template</field>
+            <field name="view_mode">tree,form</field>
+        </record>
         <menuitem id="menu_whatsapp_config_templates"
                   name="Templates"
                   parent="menu_whatsapp_config"
@@ -31,24 +43,38 @@
                   parent="menu_whatsapp_main"
                   sequence="20"/>
         
+        <!-- All Messages -->
+        <record id="action_whatsapp_message" model="ir.actions.act_window">
+            <field name="name">Messages</field>
+            <field name="res_model">whatsapp.message</field>
+            <field name="view_mode">tree,form</field>
+        </record>
         <menuitem id="menu_whatsapp_messages_all"
                   name="All Messages"
                   parent="menu_whatsapp_messages"
                   action="action_whatsapp_message"
                   sequence="10"/>
         
-        <menuitem id="menu_whatsapp_logs"
-                  name="WhatsApp Logs"
-                  parent="menu_whatsapp_messages"
-                  action="action_whatsapp_logs"
-                  sequence="15"/>
-
+        <!-- Send Message Wizard -->
+        <record id="action_whatsapp_send_message_wizard" model="ir.actions.act_window">
+            <field name="name">Send Message</field>
+            <field name="res_model">whatsapp.send.message.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
         <menuitem id="menu_whatsapp_messages_send"
                   name="Send Message"
                   parent="menu_whatsapp_messages"
                   action="action_whatsapp_send_message_wizard"
                   sequence="20"/>
         
+        <!-- Send Template Wizard -->
+        <record id="action_whatsapp_send_template_wizard" model="ir.actions.act_window">
+            <field name="name">Send Template</field>
+            <field name="res_model">whatsapp.send.template.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
         <menuitem id="menu_whatsapp_messages_send_template"
                   name="Send Template"
                   parent="menu_whatsapp_messages"
